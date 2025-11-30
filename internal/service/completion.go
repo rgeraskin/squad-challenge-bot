@@ -1,6 +1,9 @@
 package service
 
 import (
+	"log"
+	"time"
+
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
 )
@@ -118,4 +121,75 @@ func (s *CompletionService) IsAllCompleted(participantID int64, totalTasks int) 
 		return false, err
 	}
 	return count >= totalTasks && totalTasks > 0, nil
+}
+
+// DailyLimitInfo contains information about daily task completion limits
+type DailyLimitInfo struct {
+	Allowed       bool
+	Completed     int
+	Limit         int
+	TimeToReset   time.Duration
+	UserLocalTime time.Time
+}
+
+// GetUserDayBoundaries calculates the start and end of user's current day
+func GetUserDayBoundaries(offsetMinutes int) (start, end time.Time) {
+	now := time.Now().UTC()
+	// Add user's offset to get their local time
+	userLocalTime := now.Add(time.Duration(offsetMinutes) * time.Minute)
+
+	// Get start of user's day in their local time
+	year, month, day := userLocalTime.Date()
+	userDayStart := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+
+	// Convert back to server time by subtracting offset
+	serverDayStart := userDayStart.Add(-time.Duration(offsetMinutes) * time.Minute)
+	serverDayEnd := serverDayStart.Add(24 * time.Hour)
+
+	return serverDayStart, serverDayEnd
+}
+
+// GetUserLocalTime returns current time in user's timezone
+func GetUserLocalTime(offsetMinutes int) time.Time {
+	return time.Now().UTC().Add(time.Duration(offsetMinutes) * time.Minute)
+}
+
+// TimeUntilUserMidnight returns duration until user's next day
+func TimeUntilUserMidnight(offsetMinutes int) time.Duration {
+	_, dayEnd := GetUserDayBoundaries(offsetMinutes)
+	return time.Until(dayEnd)
+}
+
+// GetCompletionsToday returns the number of completions for today (user's day)
+func (s *CompletionService) GetCompletionsToday(participantID int64, offsetMinutes int) (int, error) {
+	dayStart, dayEnd := GetUserDayBoundaries(offsetMinutes)
+	log.Printf("[DEBUG] GetCompletionsToday: participantID=%d, offsetMinutes=%d, dayStart=%v, dayEnd=%v", participantID, offsetMinutes, dayStart, dayEnd)
+	count, err := s.repo.Completion().CountCompletionsInRange(participantID, dayStart, dayEnd)
+	log.Printf("[DEBUG] GetCompletionsToday: count=%d, err=%v", count, err)
+	return count, err
+}
+
+// CheckDailyLimit checks if a participant can complete more tasks today
+func (s *CompletionService) CheckDailyLimit(participant *domain.Participant, dailyLimit int) (*DailyLimitInfo, error) {
+	info := &DailyLimitInfo{
+		Limit:         dailyLimit,
+		UserLocalTime: GetUserLocalTime(participant.TimeOffsetMinutes),
+	}
+
+	// If no limit set, always allowed
+	if dailyLimit <= 0 {
+		info.Allowed = true
+		return info, nil
+	}
+
+	completed, err := s.GetCompletionsToday(participant.ID, participant.TimeOffsetMinutes)
+	if err != nil {
+		return nil, err
+	}
+
+	info.Completed = completed
+	info.TimeToReset = TimeUntilUserMidnight(participant.TimeOffsetMinutes)
+	info.Allowed = completed < dailyLimit
+
+	return info, nil
 }

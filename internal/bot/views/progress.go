@@ -49,8 +49,8 @@ func RenderTeamProgress(data TeamProgressData) string {
 		}
 		bar := renderProgressBar(pct)
 
-		sb.WriteString(fmt.Sprintf("%s %s     %s %d%% (%d/%d)\n",
-			p.Emoji, name, bar, pct, p.CompletedTasks, p.TotalTasks))
+		sb.WriteString(fmt.Sprintf("%s %d%% (%d/%d)  %s %s\n",
+			bar, pct, p.CompletedTasks, p.TotalTasks, p.Emoji, name))
 	}
 
 	return sb.String()

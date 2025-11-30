@@ -26,7 +26,7 @@ func NewParticipantService(repo repository.Repository) *ParticipantService {
 }
 
 // Join adds a user to a challenge
-func (s *ParticipantService) Join(challengeID string, telegramID int64, displayName, emoji string) (*domain.Participant, error) {
+func (s *ParticipantService) Join(challengeID string, telegramID int64, displayName, emoji string, timeOffsetMinutes int) (*domain.Participant, error) {
 	if displayName == "" {
 		return nil, ErrEmptyName
 	}
@@ -46,11 +46,12 @@ func (s *ParticipantService) Join(challengeID string, telegramID int64, displayN
 	}
 
 	participant := &domain.Participant{
-		ChallengeID:   challengeID,
-		TelegramID:    telegramID,
-		DisplayName:   displayName,
-		Emoji:         emoji,
-		NotifyEnabled: true,
+		ChallengeID:       challengeID,
+		TelegramID:        telegramID,
+		DisplayName:       displayName,
+		Emoji:             emoji,
+		NotifyEnabled:     true,
+		TimeOffsetMinutes: timeOffsetMinutes,
 	}
 
 	if err := s.repo.Participant().Create(participant); err != nil {
@@ -150,4 +151,9 @@ func (s *ParticipantService) CountByChallengeID(challengeID string) (int, error)
 // GetUsedEmojis returns emojis already used in a challenge
 func (s *ParticipantService) GetUsedEmojis(challengeID string) ([]string, error) {
 	return s.repo.Participant().GetUsedEmojis(challengeID)
+}
+
+// UpdateTimeOffset updates a participant's time offset
+func (s *ParticipantService) UpdateTimeOffset(participantID int64, offsetMinutes int) error {
+	return s.repo.Participant().UpdateTimeOffset(participantID, offsetMinutes)
 }

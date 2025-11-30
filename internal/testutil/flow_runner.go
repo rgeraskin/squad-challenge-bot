@@ -54,14 +54,14 @@ func NewFlowRunner(t *testing.T) *FlowRunner {
 
 // CreateChallengeWithTasks creates a challenge with the specified number of tasks
 func (f *FlowRunner) CreateChallengeWithTasks(creatorID int64, challengeName string, numTasks int) string {
-	// Create challenge
-	challenge, err := f.Challenge.Create(challengeName, "", creatorID)
+	// Create challenge (0 = unlimited daily tasks)
+	challenge, err := f.Challenge.Create(challengeName, "", creatorID, 0)
 	if err != nil {
 		f.T.Fatalf("Failed to create challenge: %v", err)
 	}
 
-	// Add creator as participant
-	_, err = f.Participant.Join(challenge.ID, creatorID, "Creator", "💪")
+	// Add creator as participant (0 = no time offset)
+	_, err = f.Participant.Join(challenge.ID, creatorID, "Creator", "💪", 0)
 	if err != nil {
 		f.T.Fatalf("Failed to add creator as participant: %v", err)
 	}
@@ -79,7 +79,7 @@ func (f *FlowRunner) CreateChallengeWithTasks(creatorID int64, challengeName str
 
 // JoinChallenge adds a user to a challenge
 func (f *FlowRunner) JoinChallenge(challengeID string, userID int64, name, emoji string) int64 {
-	participant, err := f.Participant.Join(challengeID, userID, name, emoji)
+	participant, err := f.Participant.Join(challengeID, userID, name, emoji, 0)
 	if err != nil {
 		f.T.Fatalf("Failed to join challenge: %v", err)
 	}

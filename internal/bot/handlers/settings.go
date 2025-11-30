@@ -25,10 +25,14 @@ func (h *Handler) showSettings(c tele.Context) error {
 
 	isAdmin := challenge.CreatorID == userID
 
+	// Calculate user's local time
+	userLocalTime := service.GetUserLocalTime(participant.TimeOffsetMinutes)
+
 	msg := "⚙️ Settings\n\n"
 	msg += fmt.Sprintf("Current challenge: %s\n", challenge.Name)
 	msg += fmt.Sprintf("Your emoji: %s\n", participant.Emoji)
 	msg += fmt.Sprintf("Your name: %s\n", participant.DisplayName)
+	msg += fmt.Sprintf("🕐 Your time: %s\n", userLocalTime.Format("15:04"))
 
 	return c.Send(msg, keyboards.Settings(participant.NotifyEnabled, isAdmin))
 }
@@ -165,4 +169,63 @@ func (h *Handler) handleConfirmLeave(c tele.Context) error {
 	h.state.Reset(userID)
 	c.Send("✅ You left the challenge.")
 	return h.showStartMenu(c)
+}
+
+// handleSyncTime starts the time sync flow from settings
+func (h *Handler) handleSyncTime(c tele.Context) error {
+	userID := c.Sender().ID
+	h.state.SetState(userID, domain.StateAwaitingSyncTime)
+	return h.promptSyncTime(c, false)
+}
+
+// processSettingsSyncTime processes time sync from settings
+func (h *Handler) processSettingsSyncTime(c tele.Context, input string) error {
+	userID := c.Sender().ID
+
+	offset, err := parseTimeInput(input)
+	if err != nil {
+		return c.Send("❌ Invalid time format. Please enter time as HH:MM (e.g., 14:30):", keyboards.SkipSyncTime(false))
+	}
+
+	userState, _ := h.state.Get(userID)
+	challengeID := userState.CurrentChallenge
+
+	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
+	if participant == nil {
+		h.state.ResetKeepChallenge(userID)
+		return h.sendError(c, "❌ You're not a participant of this challenge.")
+	}
+
+	if err := h.participant.UpdateTimeOffset(participant.ID, offset); err != nil {
+		h.state.ResetKeepChallenge(userID)
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	h.state.ResetKeepChallenge(userID)
+	c.Send("✅ Time synchronized!")
+	return h.showSettings(c)
+}
+
+// skipSettingsSyncTime skips time sync from settings (uses server time = offset 0)
+func (h *Handler) skipSettingsSyncTime(c tele.Context) error {
+	userID := c.Sender().ID
+
+	userState, _ := h.state.Get(userID)
+	challengeID := userState.CurrentChallenge
+
+	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
+	if participant == nil {
+		h.state.ResetKeepChallenge(userID)
+		return h.sendError(c, "❌ You're not a participant of this challenge.")
+	}
+
+	// Set offset to 0 (server time)
+	if err := h.participant.UpdateTimeOffset(participant.ID, 0); err != nil {
+		h.state.ResetKeepChallenge(userID)
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	h.state.ResetKeepChallenge(userID)
+	c.Send("✅ Using server time!")
+	return h.showSettings(c)
 }

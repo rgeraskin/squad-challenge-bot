@@ -183,16 +183,29 @@ func TestHandleText_CompleteChallengeCreation(t *testing.T) {
 	ctx := testutil.NewMockContext(userID).WithMessage("Test Challenge")
 	h.HandleText(ctx)
 
-	// Step 2: Creator name
+	// Step 2: Challenge description
+	ctx = testutil.NewMockContext(userID).WithMessage("A test challenge")
+	h.HandleText(ctx)
+
+	// Step 3: Creator name
 	ctx = testutil.NewMockContext(userID).WithMessage("John")
 	h.HandleText(ctx)
 
-	// Step 3: Creator emoji
-	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, map[string]string{
-		"challenge_name": "Test Challenge",
-		"display_name":   "John",
+	// Step 4: Creator emoji
+	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, map[string]interface{}{
+		"challenge_name":        "Test Challenge",
+		"challenge_description": "A test challenge",
+		"display_name":          "John",
 	})
 	ctx = testutil.NewMockContext(userID).WithMessage("💪")
+	h.HandleText(ctx)
+
+	// Step 5: Daily limit (use valid number 1-50)
+	ctx = testutil.NewMockContext(userID).WithMessage("5")
+	h.HandleText(ctx)
+
+	// Step 6: Creator sync time (14:30)
+	ctx = testutil.NewMockContext(userID).WithMessage("14:30")
 	err := h.HandleText(ctx)
 	if err != nil {
 		t.Fatalf("HandleText failed: %v", err)
@@ -281,8 +294,8 @@ func TestHandleText_TaskCreationFlow(t *testing.T) {
 	userID := int64(12345)
 
 	// First create a challenge and participant
-	challenge, _ := h.challenge.Create("Test", "", userID)
-	h.participant.Join(challenge.ID, userID, "Test", "💪")
+	challenge, _ := h.challenge.Create("Test", "", userID, 0)
+	h.participant.Join(challenge.ID, userID, "Test", "💪", 0)
 	h.state.SetCurrentChallenge(userID, challenge.ID)
 
 	// Start task creation

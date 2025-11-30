@@ -17,8 +17,8 @@ func (r *ParticipantRepo) Create(participant *domain.Participant) error {
 	participant.JoinedAt = time.Now()
 
 	result, err := r.db.NamedExec(`
-		INSERT INTO participants (challenge_id, telegram_id, display_name, emoji, notify_enabled, joined_at)
-		VALUES (:challenge_id, :telegram_id, :display_name, :emoji, :notify_enabled, :joined_at)
+		INSERT INTO participants (challenge_id, telegram_id, display_name, emoji, notify_enabled, time_offset_minutes, joined_at)
+		VALUES (:challenge_id, :telegram_id, :display_name, :emoji, :notify_enabled, :time_offset_minutes, :joined_at)
 	`, participant)
 	if err != nil {
 		return err
@@ -66,9 +66,18 @@ func (r *ParticipantRepo) GetByChallengeID(challengeID string) ([]*domain.Partic
 func (r *ParticipantRepo) Update(participant *domain.Participant) error {
 	_, err := r.db.NamedExec(`
 		UPDATE participants
-		SET display_name = :display_name, emoji = :emoji, notify_enabled = :notify_enabled
+		SET display_name = :display_name, emoji = :emoji, notify_enabled = :notify_enabled, time_offset_minutes = :time_offset_minutes
 		WHERE id = :id
 	`, participant)
+	return err
+}
+
+func (r *ParticipantRepo) UpdateTimeOffset(id int64, offsetMinutes int) error {
+	_, err := r.db.Exec(`
+		UPDATE participants
+		SET time_offset_minutes = ?
+		WHERE id = ?
+	`, offsetMinutes, id)
 	return err
 }
 

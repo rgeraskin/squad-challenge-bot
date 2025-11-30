@@ -10,7 +10,7 @@ func TestTaskService_Create(t *testing.T) {
 	taskSvc := NewTaskService(repo)
 
 	// Create challenge first
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	// Create task
 	task, err := taskSvc.Create(challenge.ID, "Task 1", "Description", "")
@@ -36,7 +36,7 @@ func TestTaskService_Create_EmptyTitle(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	_, err := taskSvc.Create(challenge.ID, "", "Description", "")
 	if err != ErrEmptyTaskTitle {
@@ -49,7 +49,7 @@ func TestTaskService_Delete_Renumber(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	// Create 3 tasks
 	task1, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
@@ -82,7 +82,7 @@ func TestTaskService_MoveTask(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	// Create 3 tasks: 1, 2, 3
 	task1, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
@@ -112,7 +112,7 @@ func TestTaskService_MaxTasks(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	// Create 50 tasks (max)
 	for i := 0; i < MaxTasksPerChallenge; i++ {
@@ -134,7 +134,7 @@ func TestTaskService_Update(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 	task, _ := taskSvc.Create(challenge.ID, "Original Title", "", "")
 
 	// Update task
@@ -160,7 +160,7 @@ func TestTaskService_CountByChallengeID(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 
 	// No tasks yet
 	count, err := taskSvc.CountByChallengeID(challenge.ID)
@@ -190,7 +190,7 @@ func TestTaskService_GetByID(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	taskSvc := NewTaskService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
 	task, _ := taskSvc.Create(challenge.ID, "Test Task", "Description", "")
 
 	// Get existing task

@@ -41,9 +41,12 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 
 	// State-dependent callbacks that should NOT reset state
 	stateDependentActions := map[string]bool{
-		"select_emoji": true,
-		"skip":         true,
-		"cancel":       true,
+		"select_emoji":           true,
+		"skip":                   true,
+		"skip_daily_limit":       true,
+		"skip_creator_sync_time": true,
+		"skip_sync_time":         true,
+		"cancel":                 true,
 	}
 
 	// Reset state for non-state-dependent callbacks (user clicked a different button)
@@ -69,6 +72,7 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		"randomize_tasks":          true,
 		"edit_challenge_name":        true,
 		"edit_challenge_description": true,
+		"edit_daily_limit":           true,
 		"delete_challenge":           true,
 		"confirm_delete_challenge":   true,
 	}
@@ -183,6 +187,8 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.handleEditChallengeName(c)
 	case "edit_challenge_description":
 		return h.handleEditChallengeDescription(c)
+	case "edit_daily_limit":
+		return h.handleEditDailyLimit(c)
 	case "delete_challenge":
 		return h.handleDeleteChallenge(c)
 	case "confirm_delete_challenge":
@@ -214,6 +220,8 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.handleChangeName(c)
 	case "change_emoji":
 		return h.handleChangeEmoji(c)
+	case "sync_time":
+		return h.handleSyncTime(c)
 	case "leave_challenge":
 		return h.handleLeaveChallenge(c)
 	case "confirm_leave":
@@ -240,6 +248,12 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.handleCancel(c)
 	case "skip":
 		return h.handleSkip(c)
+	case "skip_daily_limit":
+		return h.skipDailyLimit(c)
+	case "skip_creator_sync_time":
+		return h.skipCreatorSyncTime(c)
+	case "skip_sync_time":
+		return h.skipSyncTime(c)
 
 	// No-op (disabled buttons)
 	case "noop":
@@ -277,8 +291,27 @@ func (h *Handler) handleCancel(c tele.Context) error {
 
 	userState, _ := h.state.Get(userID)
 
+	// Check if we're in join flow (has temp data with challenge_id but not yet a participant)
+	var tempData map[string]interface{}
+	h.state.GetTempData(userID, &tempData)
+	if tempData != nil {
+		if _, hasChallenge := tempData["challenge_id"]; hasChallenge {
+			// In join flow - just go back to start menu
+			h.state.Reset(userID)
+			return h.showStartMenu(c)
+		}
+	}
+
 	// If we have a current challenge, go back to it
 	if userState.CurrentChallenge != "" {
+		// Verify user is actually a participant of this challenge
+		participant, _ := h.participant.GetByChallengeAndUser(userState.CurrentChallenge, userID)
+		if participant == nil {
+			// Not a participant - clear stale state and go to start menu
+			h.state.Reset(userID)
+			return h.showStartMenu(c)
+		}
+
 		h.state.ResetKeepChallenge(userID)
 
 		// Check if we were in admin flow
@@ -291,10 +324,12 @@ func (h *Handler) handleCancel(c tele.Context) error {
 			domain.StateAwaitingEditImage,
 			domain.StateReorderSelectTask,
 			domain.StateReorderSelectPosition,
-			domain.StateAwaitingNewChallengeName:
+			domain.StateAwaitingNewChallengeName,
+			domain.StateAwaitingNewDailyLimit:
 			return h.showAdminPanel(c, userState.CurrentChallenge)
 		case domain.StateAwaitingNewName,
-			domain.StateAwaitingNewEmoji:
+			domain.StateAwaitingNewEmoji,
+			domain.StateAwaitingSyncTime:
 			return h.showSettings(c)
 		default:
 			return h.showMainChallengeView(c, userState.CurrentChallenge)

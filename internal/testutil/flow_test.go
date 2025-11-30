@@ -15,7 +15,7 @@ func TestFlow_CreateChallengeAndAddTasks(t *testing.T) {
 	creatorID := int64(12345)
 
 	// Step 1: Create challenge
-	challenge, err := f.Challenge.Create("30-Day Fitness", "", creatorID)
+	challenge, err := f.Challenge.Create("30-Day Fitness", "", creatorID, 0)
 	if err != nil {
 		t.Fatalf("Create challenge failed: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestFlow_CreateChallengeAndAddTasks(t *testing.T) {
 	}
 
 	// Step 2: Creator joins as participant
-	participant, err := f.Participant.Join(challenge.ID, creatorID, "John", "💪")
+	participant, err := f.Participant.Join(challenge.ID, creatorID, "John", "💪", 0)
 	if err != nil {
 		t.Fatalf("Join challenge failed: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestFlow_JoinChallengeByID(t *testing.T) {
 	}
 
 	// Joiner joins
-	participant, err := f.Participant.Join(challengeID, joinerID, "Sarah", "🔥")
+	participant, err := f.Participant.Join(challengeID, joinerID, "Sarah", "🔥", 0)
 	if err != nil {
 		t.Fatalf("Join failed: %v", err)
 	}
@@ -352,8 +352,8 @@ func TestFlow_StateManagementDuringFlow(t *testing.T) {
 	f.State.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, tempData)
 
 	// Step 4: Complete flow
-	challenge, _ := f.Challenge.Create("My Challenge", "", userID)
-	f.Participant.Join(challenge.ID, userID, "John", "💪")
+	challenge, _ := f.Challenge.Create("My Challenge", "", userID, 0)
+	f.Participant.Join(challenge.ID, userID, "John", "💪", 0)
 	f.State.SetCurrentChallenge(userID, challenge.ID)
 	f.State.ResetKeepChallenge(userID)
 
@@ -379,7 +379,7 @@ func TestFlow_ChallengeFull(t *testing.T) {
 	// Add 9 more participants (total 10 - max)
 	for i := 1; i < 10; i++ {
 		userID := int64(10000 + i)
-		_, err := f.Participant.Join(challengeID, userID, "User", emojis[i-1])
+		_, err := f.Participant.Join(challengeID, userID, "User", emojis[i-1], 0)
 		if err != nil {
 			t.Fatalf("Failed to add participant %d: %v", i, err)
 		}

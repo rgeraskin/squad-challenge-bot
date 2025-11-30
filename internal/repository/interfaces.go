@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
 )
 
@@ -10,6 +12,7 @@ type ChallengeRepository interface {
 	GetByID(id string) (*domain.Challenge, error)
 	GetByUserID(telegramID int64) ([]*domain.Challenge, error)
 	Update(challenge *domain.Challenge) error
+	UpdateDailyLimit(id string, limit int) error
 	Delete(id string) error
 	Exists(id string) (bool, error)
 }
@@ -33,6 +36,7 @@ type ParticipantRepository interface {
 	GetByChallengeAndUser(challengeID string, telegramID int64) (*domain.Participant, error)
 	GetByChallengeID(challengeID string) ([]*domain.Participant, error)
 	Update(participant *domain.Participant) error
+	UpdateTimeOffset(id int64, offsetMinutes int) error
 	Delete(id int64) error
 	CountByChallengeID(challengeID string) (int, error)
 	GetUsedEmojis(challengeID string) ([]string, error)
@@ -46,6 +50,7 @@ type CompletionRepository interface {
 	GetByParticipantID(participantID int64) ([]*domain.TaskCompletion, error)
 	GetByTaskAndParticipant(taskID, participantID int64) (*domain.TaskCompletion, error)
 	CountByParticipantID(participantID int64) (int, error)
+	CountCompletionsInRange(participantID int64, from, to time.Time) (int, error)
 	GetCompletedTaskIDs(participantID int64) ([]int64, error)
 }
 

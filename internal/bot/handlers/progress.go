@@ -2,14 +2,34 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/views"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+	"github.com/rgeraskin/squad-challenge-bot/internal/service"
 	tele "gopkg.in/telebot.v3"
 )
+
+// formatDuration formats a duration as HH:MM:SS or shorter
+func formatDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+
+	if h > 0 {
+		return fmt.Sprintf("%dh %02dm", h, m)
+	}
+	if m > 0 {
+		return fmt.Sprintf("%dm %02ds", m, s)
+	}
+	return fmt.Sprintf("%ds", s)
+}
 
 // handleCompleteTask completes a task
 func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
@@ -27,14 +47,56 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 		return h.sendError(c, "❌ You're not a participant of this challenge.")
 	}
 
+	// Check daily limit
+	challenge, err := h.challenge.GetByID(challengeID)
+	if err != nil {
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	log.Printf("[DEBUG] handleCompleteTask: challengeID=%s, taskID=%d, participantID=%d", challengeID, taskID, participant.ID)
+	log.Printf("[DEBUG] challenge.DailyTaskLimit=%d, participant.TimeOffsetMinutes=%d", challenge.DailyTaskLimit, participant.TimeOffsetMinutes)
+
+	if challenge.DailyTaskLimit > 0 {
+		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
+		if err != nil {
+			log.Printf("[DEBUG] CheckDailyLimit error: %v", err)
+			return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		}
+
+		log.Printf("[DEBUG] PRE-completion limitInfo: Allowed=%v, Completed=%d, Limit=%d", limitInfo.Allowed, limitInfo.Completed, limitInfo.Limit)
+
+		if !limitInfo.Allowed {
+			log.Printf("[DEBUG] Daily limit reached BEFORE completion, blocking")
+			return h.showDailyLimitReached(c, limitInfo)
+		}
+	}
+
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
 		return h.sendError(c, "⚠️ Task not found.")
 	}
 
-	_, err = h.completion.Complete(taskID, participant.ID)
+	log.Printf("[DEBUG] About to call Complete(taskID=%d, participantID=%d)", taskID, participant.ID)
+	completion, err := h.completion.Complete(taskID, participant.ID)
 	if err != nil {
+		log.Printf("[DEBUG] Complete() error: %v", err)
 		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+	log.Printf("[DEBUG] Complete() returned: completion.ID=%d, completion.CompletedAt=%v", completion.ID, completion.CompletedAt)
+
+	// Post-completion check for daily limit (handles race conditions)
+	// If limit exceeded after completion, uncomplete and show limit message
+	if challenge.DailyTaskLimit > 0 {
+		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
+		log.Printf("[DEBUG] POST-completion limitInfo: err=%v, Allowed=%v, Completed=%d, Limit=%d", err, limitInfo.Allowed, limitInfo.Completed, limitInfo.Limit)
+		if err == nil && limitInfo != nil && limitInfo.Completed > challenge.DailyTaskLimit {
+			// Limit exceeded due to race condition - rollback
+			log.Printf("[DEBUG] Race condition detected! Rolling back completion")
+			h.completion.Uncomplete(taskID, participant.ID)
+			limitInfo.Completed = challenge.DailyTaskLimit // Show correct count
+			limitInfo.Allowed = false
+			return h.showDailyLimitReached(c, limitInfo)
+		}
 	}
 
 	// Check if all tasks completed
@@ -50,7 +112,27 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 		return h.showCelebration(c, challengeID, participant)
 	}
 
+	// Show completion feedback with daily progress if limit is set
+	if challenge.DailyTaskLimit > 0 {
+		limitInfo, _ := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
+		if limitInfo != nil {
+			msg := fmt.Sprintf("✅ Task completed! (%d/%d today, resets in %s)",
+				limitInfo.Completed, limitInfo.Limit, formatDuration(limitInfo.TimeToReset))
+			c.Send(msg)
+		}
+	}
+
 	return h.showMainChallengeView(c, challengeID)
+}
+
+// showDailyLimitReached shows the daily limit reached message
+func (h *Handler) showDailyLimitReached(c tele.Context, info *service.DailyLimitInfo) error {
+	msg := "⏱ Daily Limit Reached\n\n"
+	msg += fmt.Sprintf("You've completed %d/%d tasks today.\n\n", info.Completed, info.Limit)
+	msg += fmt.Sprintf("New day starts in: %s\n\n", formatDuration(info.TimeToReset))
+	msg += "Come back tomorrow to continue!"
+
+	return c.Send(msg, keyboards.BackToMain())
 }
 
 // handleCompleteCurrent completes the current task

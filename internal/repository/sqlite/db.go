@@ -58,6 +58,7 @@ func (r *SQLiteRepository) migrate() error {
 	migrations := []string{
 		"migrations/001_initial.sql",
 		"migrations/002_add_challenge_description.sql",
+		"migrations/003_daily_limit.sql",
 	}
 
 	for _, migrationFile := range migrations {

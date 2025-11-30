@@ -32,7 +32,7 @@ func NewChallengeService(repo repository.Repository) *ChallengeService {
 }
 
 // Create creates a new challenge
-func (s *ChallengeService) Create(name, description string, creatorID int64) (*domain.Challenge, error) {
+func (s *ChallengeService) Create(name, description string, creatorID int64, dailyTaskLimit int) (*domain.Challenge, error) {
 	// Check max challenges for user
 	challenges, err := s.repo.Challenge().GetByUserID(creatorID)
 	if err != nil {
@@ -59,10 +59,11 @@ func (s *ChallengeService) Create(name, description string, creatorID int64) (*d
 	}
 
 	challenge := &domain.Challenge{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		CreatorID:   creatorID,
+		ID:             id,
+		Name:           name,
+		Description:    description,
+		CreatorID:      creatorID,
+		DailyTaskLimit: dailyTaskLimit,
 	}
 
 	if err := s.repo.Challenge().Create(challenge); err != nil {
@@ -117,6 +118,20 @@ func (s *ChallengeService) UpdateDescription(id string, description string, user
 
 	challenge.Description = description
 	return s.repo.Challenge().Update(challenge)
+}
+
+// UpdateDailyLimit updates a challenge's daily task limit (admin only)
+func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64) error {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if challenge.CreatorID != userID {
+		return ErrNotAdmin
+	}
+
+	return s.repo.Challenge().UpdateDailyLimit(id, limit)
 }
 
 // Delete deletes a challenge (admin only)

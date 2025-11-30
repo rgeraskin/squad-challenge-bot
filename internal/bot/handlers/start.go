@@ -81,7 +81,12 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingParticipantName, tempData)
 
-	msg := fmt.Sprintf("Challenge: %s (%d tasks, %d members)\n\nEnter your display name:", challenge.Name, taskCount, participantCount)
+	dailyLimitText := "unlimited"
+	if challenge.DailyTaskLimit > 0 {
+		dailyLimitText = fmt.Sprintf("%d", challenge.DailyTaskLimit)
+	}
+
+	msg := fmt.Sprintf("Challenge: %s\n\nTasks: %d\nMembers: %d\nTasks per day limit: %s\n\nEnter your display name:", challenge.Name, taskCount, participantCount, dailyLimitText)
 
 	return c.Send(msg, keyboards.CancelOnly())
 }

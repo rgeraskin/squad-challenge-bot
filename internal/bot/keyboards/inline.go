@@ -228,19 +228,30 @@ func NewCopyTextKeyboard(challengeID, link string) *CopyTextKeyboard {
 }
 
 // AdminPanel creates the admin panel keyboard
-func AdminPanel() *tele.ReplyMarkup {
+func AdminPanel(dailyLimit int) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 
 	addTaskBtn := menu.Data("➕ Add Task", "add_task")
 	editTasksBtn := menu.Data("📋 Edit Tasks", "edit_tasks")
 	editNameBtn := menu.Data("✏️ Name", "edit_challenge_name")
 	editDescBtn := menu.Data("📝 Description", "edit_challenge_description")
+
+	// Daily limit button with current value
+	var limitText string
+	if dailyLimit <= 0 {
+		limitText = "⏱ Daily Limit: ∞"
+	} else {
+		limitText = fmt.Sprintf("⏱ Daily Limit: %d", dailyLimit)
+	}
+	limitBtn := menu.Data(limitText, "edit_daily_limit")
+
 	deleteBtn := menu.Data("🗑 Delete Challenge", "delete_challenge")
 	mainBtn := menu.Data("🏠 Main Menu", "back_to_main")
 
 	menu.Inline(
 		menu.Row(addTaskBtn, editTasksBtn),
 		menu.Row(editNameBtn, editDescBtn),
+		menu.Row(limitBtn),
 		menu.Row(deleteBtn, mainBtn),
 	)
 	return menu
@@ -374,13 +385,14 @@ func Settings(notifyEnabled bool, isAdmin bool) *tele.ReplyMarkup {
 
 	changeNameBtn := menu.Data("✏️ Change Name", "change_name")
 	changeEmojiBtn := menu.Data("😀 Change Emoji", "change_emoji")
+	syncTimeBtn := menu.Data("🕐 Sync Time", "sync_time")
 	shareBtn := menu.Data("🔗 Share the Challenge", "share_id")
 	backBtn := menu.Data("⬅️ Back", "back_to_main")
 
 	rows := []tele.Row{
 		menu.Row(notifyBtn),
 		menu.Row(changeNameBtn, changeEmojiBtn),
-		menu.Row(shareBtn),
+		menu.Row(syncTimeBtn, shareBtn),
 	}
 
 	if !isAdmin {
@@ -425,5 +437,37 @@ func BackToAdmin() *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	backBtn := menu.Data("⬅️ Back to Admin", "back_to_admin")
 	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// BackToMain creates a back to main keyboard
+func BackToMain() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back", "back_to_main")
+	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// SkipDailyLimit creates the keyboard for daily limit step during challenge creation
+func SkipDailyLimit() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	skipBtn := menu.Data("⏭ Skip (unlimited)", "skip_daily_limit")
+	cancelBtn := menu.Data("❌ Cancel", "cancel")
+	menu.Inline(menu.Row(skipBtn, cancelBtn))
+	return menu
+}
+
+// SkipSyncTime creates the keyboard for sync time step during challenge creation
+func SkipSyncTime(isCreator bool) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	var skipAction string
+	if isCreator {
+		skipAction = "skip_creator_sync_time"
+	} else {
+		skipAction = "skip_sync_time"
+	}
+	skipBtn := menu.Data("⏭ Skip (use server time)", skipAction)
+	cancelBtn := menu.Data("❌ Cancel", "cancel")
+	menu.Inline(menu.Row(skipBtn, cancelBtn))
 	return menu
 }

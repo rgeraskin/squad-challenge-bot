@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
@@ -26,8 +28,13 @@ func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 	msg += fmt.Sprintf("Challenge ID: %s\n", challenge.ID)
 	msg += fmt.Sprintf("Participants: %d/10\n", participantCount)
 	msg += fmt.Sprintf("Tasks: %d\n", taskCount)
+	if challenge.DailyTaskLimit > 0 {
+		msg += fmt.Sprintf("Daily limit: %d tasks/day\n", challenge.DailyTaskLimit)
+	} else {
+		msg += "Daily limit: unlimited\n"
+	}
 
-	return c.Send(msg, keyboards.AdminPanel())
+	return c.Send(msg, keyboards.AdminPanel(challenge.DailyTaskLimit))
 }
 
 // handleEditChallengeName starts editing challenge name
@@ -86,6 +93,53 @@ func (h *Handler) processNewChallengeDescription(c tele.Context, description str
 		c.Send("✅ Challenge description cleared")
 	} else {
 		c.Send("✅ Challenge description updated")
+	}
+	return h.showAdminPanel(c, challengeID)
+}
+
+// handleEditDailyLimit starts editing daily limit
+func (h *Handler) handleEditDailyLimit(c tele.Context) error {
+	userID := c.Sender().ID
+
+	userState, _ := h.state.Get(userID)
+	challengeID := userState.CurrentChallenge
+
+	challenge, _ := h.challenge.GetByID(challengeID)
+
+	var currentLimit string
+	if challenge.DailyTaskLimit > 0 {
+		currentLimit = fmt.Sprintf("%d tasks/day", challenge.DailyTaskLimit)
+	} else {
+		currentLimit = "unlimited"
+	}
+
+	h.state.SetState(userID, domain.StateAwaitingNewDailyLimit)
+	msg := fmt.Sprintf("⏱ Edit Daily Limit\n\nCurrent limit: %s\n\nEnter a new limit (1-50) or 0 for unlimited:", currentLimit)
+	return c.Send(msg, keyboards.CancelOnly())
+}
+
+// processNewDailyLimit processes new daily limit
+func (h *Handler) processNewDailyLimit(c tele.Context, input string) error {
+	userID := c.Sender().ID
+
+	limit, err := strconv.Atoi(strings.TrimSpace(input))
+	if err != nil || limit < 0 || limit > 50 {
+		return c.Send("❌ Please enter a number between 0 and 50 (0 = unlimited):", keyboards.CancelOnly())
+	}
+
+	userState, _ := h.state.Get(userID)
+	challengeID := userState.CurrentChallenge
+
+	if err := h.challenge.UpdateDailyLimit(challengeID, limit, userID); err != nil {
+		h.state.ResetKeepChallenge(userID)
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	h.state.ResetKeepChallenge(userID)
+	if limit > 0 {
+		c.Send(fmt.Sprintf("✅ Daily limit set to %d tasks/day", limit))
+	} else {
+		c.Send("✅ Daily limit removed (unlimited)")
 	}
 	return h.showAdminPanel(c, challengeID)
 }

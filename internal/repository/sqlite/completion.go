@@ -14,7 +14,7 @@ type CompletionRepo struct {
 }
 
 func (r *CompletionRepo) Create(completion *domain.TaskCompletion) error {
-	completion.CompletedAt = time.Now()
+	completion.CompletedAt = time.Now().UTC()
 
 	result, err := r.db.NamedExec(`
 		INSERT INTO task_completions (task_id, participant_id, completed_at)
@@ -86,4 +86,13 @@ func (r *CompletionRepo) GetCompletedTaskIDs(participantID int64) ([]int64, erro
 		SELECT task_id FROM task_completions WHERE participant_id = ?
 	`, participantID)
 	return ids, err
+}
+
+func (r *CompletionRepo) CountCompletionsInRange(participantID int64, from, to time.Time) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM task_completions
+		WHERE participant_id = ? AND completed_at >= ? AND completed_at < ?
+	`, participantID, from, to)
+	return count, err
 }

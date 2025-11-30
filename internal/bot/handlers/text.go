@@ -29,6 +29,10 @@ func (h *Handler) HandleText(c tele.Context) error {
 			return h.processCreatorEmoji(c, text)
 		}
 		return c.Send("❌ Please send a single emoji.")
+	case domain.StateAwaitingDailyLimit:
+		return h.processDailyLimit(c, text)
+	case domain.StateAwaitingCreatorSyncTime:
+		return h.processCreatorSyncTime(c, text)
 
 	// Task management
 	case domain.StateAwaitingTaskTitle:
@@ -50,12 +54,16 @@ func (h *Handler) HandleText(c tele.Context) error {
 			return h.processParticipantEmoji(c, text)
 		}
 		return c.Send("❌ Please send a single emoji.")
+	case domain.StateAwaitingSyncTime:
+		return h.processSyncTime(c, text)
 
 	// Admin
 	case domain.StateAwaitingNewChallengeName:
 		return h.processNewChallengeName(c, text)
 	case domain.StateAwaitingNewChallengeDescription:
 		return h.processNewChallengeDescription(c, text)
+	case domain.StateAwaitingNewDailyLimit:
+		return h.processNewDailyLimit(c, text)
 
 	// Settings
 	case domain.StateAwaitingNewName:

@@ -18,8 +18,8 @@ func (r *ChallengeRepo) Create(challenge *domain.Challenge) error {
 	challenge.UpdatedAt = time.Now()
 
 	_, err := r.db.NamedExec(`
-		INSERT INTO challenges (id, name, description, creator_id, created_at, updated_at)
-		VALUES (:id, :name, :description, :creator_id, :created_at, :updated_at)
+		INSERT INTO challenges (id, name, description, creator_id, daily_task_limit, created_at, updated_at)
+		VALUES (:id, :name, :description, :creator_id, :daily_task_limit, :created_at, :updated_at)
 	`, challenge)
 	return err
 }
@@ -48,9 +48,18 @@ func (r *ChallengeRepo) Update(challenge *domain.Challenge) error {
 	challenge.UpdatedAt = time.Now()
 	_, err := r.db.NamedExec(`
 		UPDATE challenges
-		SET name = :name, description = :description, updated_at = :updated_at
+		SET name = :name, description = :description, daily_task_limit = :daily_task_limit, updated_at = :updated_at
 		WHERE id = :id
 	`, challenge)
+	return err
+}
+
+func (r *ChallengeRepo) UpdateDailyLimit(id string, limit int) error {
+	_, err := r.db.Exec(`
+		UPDATE challenges
+		SET daily_task_limit = ?, updated_at = ?
+		WHERE id = ?
+	`, limit, time.Now(), id)
 	return err
 }
 

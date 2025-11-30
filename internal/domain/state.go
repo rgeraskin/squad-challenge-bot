@@ -20,6 +20,8 @@ const (
 	StateAwaitingChallengeDescription = "awaiting_challenge_description"
 	StateAwaitingCreatorName          = "awaiting_creator_name"
 	StateAwaitingCreatorEmoji         = "awaiting_creator_emoji"
+	StateAwaitingDailyLimit           = "awaiting_daily_limit"
+	StateAwaitingCreatorSyncTime      = "awaiting_creator_sync_time"
 
 	// Task management
 	StateAwaitingTaskTitle       = "awaiting_task_title"
@@ -32,13 +34,15 @@ const (
 	StateReorderSelectPosition   = "reorder_select_position"
 
 	// Joining challenge
-	StateAwaitingChallengeID       = "awaiting_challenge_id"
-	StateAwaitingParticipantName   = "awaiting_participant_name"
-	StateAwaitingParticipantEmoji  = "awaiting_participant_emoji"
+	StateAwaitingChallengeID      = "awaiting_challenge_id"
+	StateAwaitingParticipantName  = "awaiting_participant_name"
+	StateAwaitingParticipantEmoji = "awaiting_participant_emoji"
+	StateAwaitingSyncTime         = "awaiting_sync_time"
 
 	// Admin
 	StateAwaitingNewChallengeName        = "awaiting_new_challenge_name"
 	StateAwaitingNewChallengeDescription = "awaiting_new_challenge_description"
+	StateAwaitingNewDailyLimit           = "awaiting_new_daily_limit"
 
 	// User settings
 	StateAwaitingNewName  = "awaiting_new_name"
