@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS challenges (
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     creator_id INTEGER NOT NULL,
+    daily_task_limit INTEGER DEFAULT 0,
+    hide_future_tasks INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -27,6 +29,7 @@ CREATE TABLE IF NOT EXISTS participants (
     display_name TEXT NOT NULL,
     emoji TEXT NOT NULL,
     notify_enabled BOOLEAN DEFAULT 1,
+    time_offset_minutes INTEGER DEFAULT 0,
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(challenge_id, telegram_id)
 );

@@ -54,24 +54,12 @@ func New(dbPath string) (*SQLiteRepository, error) {
 }
 
 func (r *SQLiteRepository) migrate() error {
-	// Run migrations in order
-	migrations := []string{
-		"migrations/001_initial.sql",
-		"migrations/002_add_challenge_description.sql",
-		"migrations/003_daily_limit.sql",
-		"migrations/004_hide_future_tasks.sql",
+	migration, err := migrationsFS.ReadFile("migrations/001_initial.sql")
+	if err != nil {
+		return err
 	}
-
-	for _, migrationFile := range migrations {
-		migration, err := migrationsFS.ReadFile(migrationFile)
-		if err != nil {
-			return err
-		}
-		// Ignore errors for idempotent migrations (e.g., column already exists)
-		r.db.Exec(string(migration))
-	}
-
-	return nil
+	_, err = r.db.Exec(string(migration))
+	return err
 }
 
 func (r *SQLiteRepository) Challenge() repository.ChallengeRepository {
