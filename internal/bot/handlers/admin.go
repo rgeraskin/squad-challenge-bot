@@ -15,38 +15,41 @@ import (
 func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	taskCount, _ := h.task.CountByChallengeID(challengeID)
 	participantCount, _ := h.participant.CountByChallengeID(challengeID)
 
-	msg := fmt.Sprintf("🔧 Admin Panel - %s\n\n", challenge.Name)
-	if challenge.Description != "" {
-		msg += fmt.Sprintf("%s\n\n", challenge.Description)
-	}
-	msg += fmt.Sprintf("Challenge ID: %s\n", challenge.ID)
-	msg += fmt.Sprintf("Participants: %d/10\n", participantCount)
-	msg += fmt.Sprintf("Tasks: %d\n", taskCount)
+	msg := "🔧 <i>Admin Panel</i>\n\n"
+	msg += fmt.Sprintf("<b>Challenge:</b> %s\n", challenge.Name)
+	msg += fmt.Sprintf("<b>Description:</b> %s\n", challenge.Description)
+	msg += fmt.Sprintf("<b>Challenge ID:</b> <code>%s</code>\n", challenge.ID)
+	msg += fmt.Sprintf("<b>Members:</b> %d/10\n", participantCount)
+	msg += fmt.Sprintf("<b>Tasks:</b> %d\n", taskCount)
 	if challenge.DailyTaskLimit > 0 {
-		msg += fmt.Sprintf("Daily limit: %d tasks/day\n", challenge.DailyTaskLimit)
+		msg += fmt.Sprintf("<b>Daily Limit:</b> %d/day\n", challenge.DailyTaskLimit)
 	} else {
-		msg += "Daily limit: unlimited\n"
+		msg += "<b>Daily Limit:</b> No daily limit\n"
 	}
 	if challenge.HideFutureTasks {
-		msg += "Task visibility: Sequential\n"
+		msg += "<b>Tasks:</b> Sequential mode\n"
 	} else {
-		msg += "Task visibility: All visible\n"
+		msg += "<b>Tasks:</b> All tasks visible\n"
 	}
 
-	return c.Send(msg, keyboards.AdminPanel(challenge.DailyTaskLimit, challenge.HideFutureTasks))
+	return c.Send(
+		msg,
+		keyboards.AdminPanel(challenge.DailyTaskLimit, challenge.HideFutureTasks),
+		tele.ModeHTML,
+	)
 }
 
 // handleEditChallengeName starts editing challenge name
 func (h *Handler) handleEditChallengeName(c tele.Context) error {
 	userID := c.Sender().ID
 	h.state.SetState(userID, domain.StateAwaitingNewChallengeName)
-	return c.Send("Enter new challenge name:", keyboards.CancelOnly())
+	return c.Send("✏️ What's the new challenge name?", keyboards.CancelOnly())
 }
 
 // processNewChallengeName processes new challenge name
@@ -54,7 +57,7 @@ func (h *Handler) processNewChallengeName(c tele.Context, name string) error {
 	userID := c.Sender().ID
 
 	if len(name) == 0 || len(name) > 50 {
-		return c.Send("❌ Challenge name must be 1-50 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 Keep it between 1-50 characters. Try again:", keyboards.CancelOnly())
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -62,11 +65,11 @@ func (h *Handler) processNewChallengeName(c tele.Context, name string) error {
 
 	if err := h.challenge.UpdateName(challengeID, name, userID); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send(fmt.Sprintf("✅ Challenge renamed to \"%s\"", name))
+	c.Send(fmt.Sprintf("✅ Done! Challenge is now \"%s\"", name))
 	return h.showAdminPanel(c, challengeID)
 }
 
@@ -74,7 +77,10 @@ func (h *Handler) processNewChallengeName(c tele.Context, name string) error {
 func (h *Handler) handleEditChallengeDescription(c tele.Context) error {
 	userID := c.Sender().ID
 	h.state.SetState(userID, domain.StateAwaitingNewChallengeDescription)
-	return c.Send("Enter new challenge description (or send empty message to clear):", keyboards.CancelOnly())
+	return c.Send(
+		"📝 What's the new description?",
+		keyboards.CancelOnly(),
+	)
 }
 
 // processNewChallengeDescription processes new challenge description
@@ -82,7 +88,7 @@ func (h *Handler) processNewChallengeDescription(c tele.Context, description str
 	userID := c.Sender().ID
 
 	if len(description) > 500 {
-		return c.Send("❌ Description must be 500 characters or less. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 That's a bit long! Keep it under 500 characters:", keyboards.CancelOnly())
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -90,14 +96,14 @@ func (h *Handler) processNewChallengeDescription(c tele.Context, description str
 
 	if err := h.challenge.UpdateDescription(challengeID, description, userID); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
 	if description == "" {
-		c.Send("✅ Challenge description cleared")
+		c.Send("✅ Description cleared!")
 	} else {
-		c.Send("✅ Challenge description updated")
+		c.Send("✅ Description updated!")
 	}
 	return h.showAdminPanel(c, challengeID)
 }
@@ -119,8 +125,10 @@ func (h *Handler) handleEditDailyLimit(c tele.Context) error {
 	}
 
 	h.state.SetState(userID, domain.StateAwaitingNewDailyLimit)
-	msg := fmt.Sprintf("⏱ Edit Daily Limit\n\nCurrent limit: %s\n\nEnter a new limit (1-50) or 0 for unlimited:", currentLimit)
-	return c.Send(msg, keyboards.CancelOnly())
+	msg := "🕓 <i>Daily Limit</i>\n\n"
+	msg += fmt.Sprintf("Right now: <b>%s</b>\n\n", currentLimit)
+	msg += "Pick a number (1-50) or 0 for unlimited"
+	return c.Send(msg, keyboards.CancelOnly(), tele.ModeHTML)
 }
 
 // processNewDailyLimit processes new daily limit
@@ -129,7 +137,7 @@ func (h *Handler) processNewDailyLimit(c tele.Context, input string) error {
 
 	limit, err := strconv.Atoi(strings.TrimSpace(input))
 	if err != nil || limit < 0 || limit > 50 {
-		return c.Send("❌ Please enter a number between 0 and 50 (0 = unlimited):", keyboards.CancelOnly())
+		return c.Send("🤔 Pick a number between 0 and 50 (0 = no limit):", keyboards.CancelOnly())
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -137,14 +145,14 @@ func (h *Handler) processNewDailyLimit(c tele.Context, input string) error {
 
 	if err := h.challenge.UpdateDailyLimit(challengeID, limit, userID); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
 	if limit > 0 {
-		c.Send(fmt.Sprintf("✅ Daily limit set to %d tasks/day", limit))
+		c.Send(fmt.Sprintf("✅ Got it! %d tasks/day max", limit))
 	} else {
-		c.Send("✅ Daily limit removed (unlimited)")
+		c.Send("✅ No limits now — go wild! 🚀")
 	}
 	return h.showAdminPanel(c, challengeID)
 }
@@ -158,13 +166,13 @@ func (h *Handler) handleToggleHideFutureTasks(c tele.Context) error {
 
 	newValue, err := h.challenge.ToggleHideFutureTasks(challengeID, userID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	if newValue {
-		c.Send("✅ Task visibility set to Sequential (future tasks hidden)")
+		c.Send("✅ Sequential mode on — one task at a time! 🔒")
 	} else {
-		c.Send("✅ Task visibility set to All Visible")
+		c.Send("✅ All tasks visible now! 👀")
 	}
 	return h.showAdminPanel(c, challengeID)
 }
@@ -180,13 +188,13 @@ func (h *Handler) handleDeleteChallenge(c tele.Context) error {
 	taskCount, _ := h.task.CountByChallengeID(challengeID)
 	participantCount, _ := h.participant.CountByChallengeID(challengeID)
 
-	msg := "⚠️ DELETE CHALLENGE?\n\n"
-	msg += fmt.Sprintf("\"%s\" will be permanently deleted.\n\n", challenge.Name)
-	msg += "This will remove:\n"
-	msg += fmt.Sprintf("• All %d tasks\n", taskCount)
-	msg += fmt.Sprintf("• All %d participants\n", participantCount)
-	msg += "• All progress data\n\n"
-	msg += "This action cannot be undone!"
+	msg := "🚨 Whoa! Delete this challenge?\n\n"
+	msg += fmt.Sprintf("\"%s\" will be gone forever.\n\n", challenge.Name)
+	msg += "This nukes:\n"
+	msg += fmt.Sprintf("• %d tasks\n", taskCount)
+	msg += fmt.Sprintf("• %d participants\n", participantCount)
+	msg += "• All progress\n\n"
+	msg += "⚠️ No take-backs!"
 
 	return c.Send(msg, keyboards.DeleteChallengeConfirm())
 }
@@ -204,11 +212,11 @@ func (h *Handler) handleConfirmDeleteChallenge(c tele.Context) error {
 	go h.notification.NotifyChallengeDeleted(challengeID, challenge.Name, userID)
 
 	if err := h.challenge.Delete(challengeID, userID); err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.Reset(userID)
-	c.Send("✅ Challenge deleted.")
+	c.Send("💨 Poof! Challenge deleted.")
 	return h.showStartMenu(c)
 }
 
@@ -242,10 +250,10 @@ func (h *Handler) handleShareID(c tele.Context) error {
 
 	botUsername := h.bot.Me.Username
 
-	msg := "📋 Share Challenge\n\n"
-	msg += fmt.Sprintf("Challenge ID: `%s`\n\n", challengeID)
-	msg += "Or share this link:\n"
-	msg += fmt.Sprintf("`t.me/%s?start=%s`", botUsername, challengeID)
+	msg := "🔗 <i>Share with friends!</i>\n\n"
+	msg += fmt.Sprintf("<b>Challenge ID:</b> <code>%s</code>\n\n", challengeID)
+	msg += "Or send this link:\n"
+	msg += fmt.Sprintf("<code>t.me/%s?start=%s</code>", botUsername, challengeID)
 
 	kb := keyboards.ShareID(challengeID, botUsername)
 	kbJSON, _ := json.Marshal(kb)
@@ -254,7 +262,7 @@ func (h *Handler) handleShareID(c tele.Context) error {
 	params := map[string]string{
 		"chat_id":      fmt.Sprintf("%d", c.Chat().ID),
 		"text":         msg,
-		"parse_mode":   "Markdown",
+		"parse_mode":   "HTML",
 		"reply_markup": string(kbJSON),
 	}
 	_, err := h.bot.Raw("sendMessage", params)

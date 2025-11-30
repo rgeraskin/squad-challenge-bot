@@ -20,11 +20,11 @@ func (h *Handler) handleAddTask(c tele.Context) error {
 	// Check task limit
 	count, _ := h.task.CountByChallengeID(challengeID)
 	if count >= service.MaxTasksPerChallenge {
-		return h.sendError(c, "❌ Challenge has reached maximum of 50 tasks.")
+		return h.sendError(c, "📋 Maxed out at 50 tasks!")
 	}
 
 	h.state.SetState(userID, domain.StateAwaitingTaskTitle)
-	return c.Send("Enter task title:", keyboards.CancelOnly())
+	return c.Send("📝 What's the task called?", keyboards.CancelOnly())
 }
 
 // processTaskTitle processes task title input
@@ -32,7 +32,7 @@ func (h *Handler) processTaskTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
 	if len(title) == 0 || len(title) > 100 {
-		return c.Send("❌ Task title must be 1-100 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 Keep it between 1-100 characters:", keyboards.CancelOnly())
 	}
 
 	tempData := map[string]interface{}{
@@ -40,7 +40,7 @@ func (h *Handler) processTaskTitle(c tele.Context, title string) error {
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingTaskImage, tempData)
 
-	return c.Send("Send an image for this task (or click Skip):", keyboards.SkipCancel())
+	return c.Send("🖼 Got a picture for this task? (or skip it)", keyboards.SkipCancel())
 }
 
 // processTaskImage processes task image upload
@@ -52,7 +52,7 @@ func (h *Handler) processTaskImage(c tele.Context, fileID string) error {
 	tempData["image_file_id"] = fileID
 	h.state.SetStateWithData(userID, domain.StateAwaitingTaskDescription, tempData)
 
-	return c.Send("Enter task description (or click Skip):", keyboards.SkipCancel())
+	return c.Send("📝 Add some details? (or skip it)", keyboards.SkipCancel())
 }
 
 // skipTaskImage skips the task image
@@ -60,13 +60,13 @@ func (h *Handler) skipTaskImage(c tele.Context) error {
 	userID := c.Sender().ID
 
 	h.state.SetState(userID, domain.StateAwaitingTaskDescription)
-	return c.Send("Enter task description (or click Skip):", keyboards.SkipCancel())
+	return c.Send("📝 Add some details? (or skip it)", keyboards.SkipCancel())
 }
 
 // processTaskDescription processes task description input
 func (h *Handler) processTaskDescription(c tele.Context, description string) error {
 	if len(description) > 500 {
-		return c.Send("❌ Description must be 500 characters or less. Try again:", keyboards.SkipCancel())
+		return c.Send("😅 That's a bit long! Keep it under 500 characters:", keyboards.SkipCancel())
 	}
 
 	return h.createTask(c, description)
@@ -97,14 +97,14 @@ func (h *Handler) createTask(c tele.Context, description string) error {
 	if err != nil {
 		h.state.ResetKeepChallenge(userID)
 		if err == service.ErrMaxTasksReached {
-			return h.sendError(c, "❌ Challenge has reached maximum of 50 tasks.")
+			return h.sendError(c, "📋 Maxed out at 50 tasks!")
 		}
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
 
-	msg := fmt.Sprintf("✅ Task #%d \"%s\" added!", task.OrderNum, task.Title)
+	msg := fmt.Sprintf("✅ Task #%d added: \"%s\"", task.OrderNum, task.Title)
 	return c.Send(msg, keyboards.AddTaskDone())
 }
 
@@ -117,32 +117,40 @@ func (h *Handler) handleEditTasks(c tele.Context) error {
 
 	tasks, err := h.task.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	if len(tasks) == 0 {
-		return c.Send("📭 No tasks yet. Add some tasks first!", keyboards.BackToAdmin())
+		return c.Send("📭 No tasks yet — add some first!", keyboards.BackToAdmin())
 	}
 
-	challenge, _ := h.challenge.GetByID(challengeID)
-	msg := fmt.Sprintf("📋 Edit Tasks - %s\n\nSelect a task to edit:", challenge.Name)
-	return c.Send(msg, keyboards.EditTasksList(tasks))
+	msg := "📋 <i>Edit tasks</i>\n\nTap one to edit"
+	return c.Send(msg, keyboards.EditTasksList(tasks), tele.ModeHTML)
 }
 
 // handleEditTask shows the edit task menu
 func (h *Handler) handleEditTask(c tele.Context, taskIDStr string) error {
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
-	msg := fmt.Sprintf("Edit Task #%d: %s", task.OrderNum, task.Title)
-	return c.Send(msg, keyboards.EditTask(taskID))
+	// Send image first if exists
+	if task.ImageFileID != "" {
+		photo := &tele.Photo{File: tele.File{FileID: task.ImageFileID}}
+		c.Send(photo)
+	}
+
+	msg := fmt.Sprintf("✏️ Task #%d: <b>%s</b>", task.OrderNum, task.Title)
+	if task.Description != "" {
+		msg += fmt.Sprintf("\n\n<i>%s</i>", task.Description)
+	}
+	return c.Send(msg, keyboards.EditTask(taskID), tele.ModeHTML)
 }
 
 // handleEditTaskTitle starts editing task title
@@ -155,7 +163,7 @@ func (h *Handler) handleEditTaskTitle(c tele.Context, taskIDStr string) error {
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditTitle, tempData)
 
-	return c.Send("Enter new task title:", keyboards.CancelOnly())
+	return c.Send("✏️ What's the new title?", keyboards.CancelOnly())
 }
 
 // processEditTitle processes new task title
@@ -163,7 +171,7 @@ func (h *Handler) processEditTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
 	if len(title) == 0 || len(title) > 100 {
-		return c.Send("❌ Task title must be 1-100 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 Keep it between 1-100 characters:", keyboards.CancelOnly())
 	}
 
 	var tempData map[string]interface{}
@@ -173,17 +181,17 @@ func (h *Handler) processEditTitle(c tele.Context, title string) error {
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	task.Title = title
 	if err := h.task.Update(task); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send(fmt.Sprintf("✅ Task title updated to \"%s\"", title))
+	c.Send(fmt.Sprintf("✅ Done! Now it's \"%s\"", title))
 	return h.handleEditTasks(c)
 }
 
@@ -197,7 +205,10 @@ func (h *Handler) handleEditTaskDescription(c tele.Context, taskIDStr string) er
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditDescription, tempData)
 
-	return c.Send("Enter new task description (or send empty message to clear):", keyboards.CancelOnly())
+	return c.Send(
+		"📝 What's the new description?",
+		keyboards.CancelOnly(),
+	)
 }
 
 // processEditDescription processes new task description
@@ -205,7 +216,7 @@ func (h *Handler) processEditDescription(c tele.Context, description string) err
 	userID := c.Sender().ID
 
 	if len(description) > 500 {
-		return c.Send("❌ Description must be 500 characters or less. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 That's a bit long! Keep it under 500 characters:", keyboards.CancelOnly())
 	}
 
 	var tempData map[string]interface{}
@@ -215,17 +226,17 @@ func (h *Handler) processEditDescription(c tele.Context, description string) err
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	task.Description = description
 	if err := h.task.Update(task); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send("✅ Task description updated!")
+	c.Send("✅ Description updated!")
 	return h.handleEditTasks(c)
 }
 
@@ -239,7 +250,7 @@ func (h *Handler) handleEditTaskImage(c tele.Context, taskIDStr string) error {
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditImage, tempData)
 
-	return c.Send("Send new image for this task:", keyboards.CancelOnly())
+	return c.Send("🖼 Send the new image", keyboards.CancelOnly())
 }
 
 // processEditImage processes new task image
@@ -253,17 +264,17 @@ func (h *Handler) processEditImage(c tele.Context, fileID string) error {
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	task.ImageFileID = fileID
 	if err := h.task.Update(task); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send("✅ Task image updated!")
+	c.Send("✅ New image saved!")
 	return h.handleEditTasks(c)
 }
 
@@ -273,10 +284,10 @@ func (h *Handler) handleDeleteTask(c tele.Context, taskIDStr string) error {
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
-	msg := fmt.Sprintf("⚠️ Delete task \"%s\"?\n\nThis will remove completion data for all users.", task.Title)
+	msg := fmt.Sprintf("🗑 Delete \"%s\"?\n\nEveryone's progress on this will be gone!", task.Title)
 	return c.Send(msg, keyboards.DeleteTaskConfirm(taskID))
 }
 
@@ -289,11 +300,51 @@ func (h *Handler) handleConfirmDeleteTask(c tele.Context, taskIDStr string) erro
 	challengeID := userState.CurrentChallenge
 
 	if err := h.task.Delete(taskID, challengeID); err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
-	c.Send("✅ Task deleted!")
+	// Check if any participants now completed all tasks due to this deletion
+	go h.checkCompletionsAfterTaskDelete(challengeID, userID)
+
+	c.Send("✅ Gone! Task deleted.")
 	return h.handleEditTasks(c)
+}
+
+// checkCompletionsAfterTaskDelete checks if anyone completed the challenge after task deletion
+func (h *Handler) checkCompletionsAfterTaskDelete(challengeID string, adminUserID int64) {
+	tasks, err := h.task.GetByChallengeID(challengeID)
+	if err != nil || len(tasks) == 0 {
+		return
+	}
+
+	challenge, err := h.challenge.GetByID(challengeID)
+	if err != nil {
+		return
+	}
+
+	participants, err := h.participant.GetByChallengeID(challengeID)
+	if err != nil {
+		return
+	}
+
+	totalTasks := len(tasks)
+
+	for _, p := range participants {
+		completed, _ := h.completion.CountByParticipantID(p.ID)
+		if completed >= totalTasks {
+			// This participant has now completed all tasks
+			// Notify them directly
+			h.notification.NotifyUserChallengeCompleted(p.TelegramID, challenge.Name)
+
+			// Notify others (except admin who just deleted the task)
+			h.notification.NotifyChallengeCompleted(
+				challengeID,
+				p.Emoji,
+				p.DisplayName,
+				adminUserID,
+			)
+		}
+	}
 }
 
 // handleReorderTasks shows the reorder tasks list
@@ -305,15 +356,15 @@ func (h *Handler) handleReorderTasks(c tele.Context) error {
 
 	tasks, err := h.task.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	if len(tasks) < 2 {
-		return c.Send("📭 Need at least 2 tasks to reorder.", keyboards.BackToAdmin())
+		return c.Send("🤷 Need at least 2 tasks to shuffle around!", keyboards.BackToAdmin())
 	}
 
 	challenge, _ := h.challenge.GetByID(challengeID)
-	msg := fmt.Sprintf("🔀 Reorder Tasks - %s\n\nSelect a task to move:", challenge.Name)
+	msg := fmt.Sprintf("🔀 Reorder — %s\n\nTap the task you want to move:", challenge.Name)
 	return c.Send(msg, keyboards.ReorderTasksList(tasks))
 }
 
@@ -327,12 +378,12 @@ func (h *Handler) handleReorderSelect(c tele.Context, taskIDStr string) error {
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	tasks, _ := h.task.GetByChallengeID(challengeID)
 
-	msg := fmt.Sprintf("🔀 Moving: \"%s\"\n\nSelect new position:", task.Title)
+	msg := fmt.Sprintf("🔀 Moving \"%s\"\n\nWhere should it go?", task.Title)
 	return c.Send(msg, keyboards.ReorderPositions(taskID, len(tasks), task.OrderNum))
 }
 
@@ -346,12 +397,12 @@ func (h *Handler) handleReorderMove(c tele.Context, taskIDStr, positionStr strin
 	challengeID := userState.CurrentChallenge
 
 	if err := h.task.MoveTask(taskID, challengeID, newPosition); err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Show new order
 	tasks, _ := h.task.GetByChallengeID(challengeID)
-	msg := "✅ Task moved!\n\nNew order:\n"
+	msg := "✅ Done! Here's the new order:\n\n"
 	for _, t := range tasks {
 		msg += fmt.Sprintf("%d. %s\n", t.OrderNum, t.Title)
 	}
@@ -367,7 +418,7 @@ func (h *Handler) handleRandomizeTasks(c tele.Context) error {
 	challengeID := userState.CurrentChallenge
 
 	if err := h.task.RandomizeOrder(challengeID); err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Show reorder view with updated order

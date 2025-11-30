@@ -498,7 +498,7 @@ Note: Participants sorted by completion % descending (highest first)
 │                                                  │
 │  You completed "30-Day Fitness"!                 │
 │                                                  │
-│  ⏱ Time taken: 28 days                          │
+│  🕓 Time taken: 28 days                          │
 │  📊 Tasks completed: 30/30                       │
 │                                                  │
 │  Team Status:                                    │
@@ -930,36 +930,36 @@ The following callbacks/actions require admin verification:
 
 ## Error Handling
 
-| Scenario | Response |
-|----------|----------|
-| Invalid challenge ID | "❌ Challenge not found. Check the ID and try again." |
-| Challenge full (10/10) | "❌ This challenge is full (10/10 participants)." |
-| Already a member | "ℹ️ You're already participating in this challenge." |
-| Emoji already taken | "❌ This emoji is already taken. Choose another:" |
-| Empty task title | "❌ Task title cannot be empty." |
-| Invalid emoji | "❌ Please send a single emoji." |
-| Network/DB error | "⚠️ Something went wrong. Please try again." |
-| Challenge has no tasks | "📭 No tasks yet. Waiting for admin to add tasks..." |
-| User not in challenge | "❌ You're not a participant of this challenge." |
-| Max tasks reached | "❌ Challenge has reached maximum of 50 tasks." |
+| Scenario               | Response                                                |
+|------------------------|---------------------------------------------------------|
+| Invalid challenge ID   | "❌ Challenge not found. Check the ID and try again."    |
+| Challenge full (10/10) | "❌ This challenge is full (10/10 participants)."        |
+| Already a member       | "ℹ️ You're already participating in this challenge."    |
+| Emoji already taken    | "❌ This emoji is already taken. Choose another:"        |
+| Empty task title       | "❌ Task title cannot be empty."                         |
+| Invalid emoji          | "❌ Please send a single emoji."                         |
+| Network/DB error       | "⚠️ Something went wrong. Please try again."            |
+| Challenge has no tasks | "📭 No tasks yet. Waiting for admin to add tasks..."    |
+| User not in challenge  | "❌ You're not a participant of this challenge."         |
+| Max tasks reached      | "❌ Challenge has reached maximum of 50 tasks."          |
 | Max challenges reached | "❌ You've reached the maximum of 10 active challenges." |
-| Image too large | "❌ Image is too large. Maximum size is 5MB." |
+| Image too large        | "❌ Image is too large. Maximum size is 5MB."            |
 
 ---
 
 ## Input Validation
 
-| Field | Rules |
-|-------|-------|
-| Challenge name | 1-50 characters |
-| Display name | 1-30 characters |
-| Emoji | Single emoji only (validated with regex) |
-| Task title | 1-100 characters |
-| Task description | 0-500 characters (optional) |
-| Challenge ID | Exactly 8 alphanumeric characters |
-| Task image | Telegram photo only (file_id stored), max 5MB |
-| Tasks per challenge | Maximum 50 tasks |
-| Challenges per user | Maximum 10 active challenges |
+| Field               | Rules                                         |
+|---------------------|-----------------------------------------------|
+| Challenge name      | 1-50 characters                               |
+| Display name        | 1-30 characters                               |
+| Emoji               | Single emoji only (validated with regex)      |
+| Task title          | 1-100 characters                              |
+| Task description    | 0-500 characters (optional)                   |
+| Challenge ID        | Exactly 8 alphanumeric characters             |
+| Task image          | Telegram photo only (file_id stored), max 5MB |
+| Tasks per challenge | Maximum 50 tasks                              |
+| Challenges per user | Maximum 10 active challenges                  |
 
 ---
 
@@ -1065,12 +1065,12 @@ internal/
 ```
 
 ### Required Test Coverage
-| Component | Min Coverage |
-|-----------|--------------|
-| Services | 80% |
-| Repository | 70% |
-| Handlers | 60% |
-| State transitions | 100% |
+| Component         | Min Coverage |
+|-------------------|--------------|
+| Services          | 80%          |
+| Repository        | 70%          |
+| Handlers          | 60%          |
+| State transitions | 100%         |
 
 ---
 
@@ -1288,12 +1288,12 @@ awaiting_new_emoji          → Settings: waiting for new emoji
 
 ## Notification Messages
 
-| Event | Message |
-|-------|---------|
-| User joins | `🎉 {emoji} {name} joined the challenge!` |
-| Task completed | `✅ {emoji} {name} completed "{task_title}"!` |
-| Challenge completed | `🏆 {emoji} {name} finished the challenge!` |
-| Challenge deleted | `❌ Challenge "{challenge_name}" has been deleted by admin.` |
+| Event               | Message                                                     |
+|---------------------|-------------------------------------------------------------|
+| User joins          | `🎉 {emoji} {name} joined the challenge!`                   |
+| Task completed      | `✅ {emoji} {name} completed "{task_title}"!`                |
+| Challenge completed | `🏆 {emoji} {name} finished the challenge!`                 |
+| Challenge deleted   | `❌ Challenge "{challenge_name}" has been deleted by admin.` |
 
 ---
 
@@ -1354,15 +1354,15 @@ volumes:
 
 ## Estimated Complexity
 
-| Component | Files | Complexity |
-|-----------|-------|------------|
-| Database/Repository | 6-8 | Medium |
-| Domain entities | 4-5 | Low |
-| Handlers | 6-8 | High |
-| Views/Keyboards | 5-6 | Medium |
-| Services | 5-6 | Medium |
-| State machine | 1-2 | Medium |
-| **Total** | ~35 files | |
+| Component           | Files     | Complexity |
+|---------------------|-----------|------------|
+| Database/Repository | 6-8       | Medium     |
+| Domain entities     | 4-5       | Low        |
+| Handlers            | 6-8       | High       |
+| Views/Keyboards     | 5-6       | Medium     |
+| Services            | 5-6       | Medium     |
+| State machine       | 1-2       | Medium     |
+| **Total**           | ~35 files |            |
 
 ---
 

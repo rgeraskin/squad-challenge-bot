@@ -28,20 +28,20 @@ type TeamMemberStatus struct {
 func RenderCelebration(data CelebrationData) string {
 	var sb strings.Builder
 
-	sb.WriteString("\n🎉🎊🏆 CONGRATULATIONS! 🏆🎊🎉\n\n")
-	sb.WriteString(fmt.Sprintf("You completed \"%s\"!\n\n", data.ChallengeName))
+	sb.WriteString("\n🎉🎊🏆 YOU DID IT! 🏆🎊🎉\n\n")
+	sb.WriteString(fmt.Sprintf("Woohoo! You crushed \"%s\"!\n\n", data.ChallengeName))
 
 	// Stats
-	sb.WriteString(fmt.Sprintf("⏱ Time taken: %s\n", formatDuration(data.TimeTaken)))
-	sb.WriteString(fmt.Sprintf("📊 Tasks completed: %d/%d\n\n", data.CompletedTasks, data.TotalTasks))
+	sb.WriteString(fmt.Sprintf("🕓 Finished in %s\n", formatDuration(data.TimeTaken)))
+	sb.WriteString(fmt.Sprintf("📊 %d/%d tasks done\n\n", data.CompletedTasks, data.TotalTasks))
 
 	// Squad status
-	sb.WriteString("Squad Status:\n")
+	sb.WriteString("👥 How's the squad doing:\n")
 	for _, member := range data.TeamStatus {
 		if member.IsCompleted {
-			sb.WriteString(fmt.Sprintf("%s %s - ✅ Completed\n", member.Emoji, member.Name))
+			sb.WriteString(fmt.Sprintf("%s %s — ✅ Crushed it!\n", member.Emoji, member.Name))
 		} else {
-			sb.WriteString(fmt.Sprintf("%s %s - 🔄 %d/%d tasks\n",
+			sb.WriteString(fmt.Sprintf("%s %s — 🔄 %d/%d\n",
 				member.Emoji, member.Name, member.CompletedTasks, member.TotalTasks))
 		}
 	}

@@ -86,6 +86,29 @@ func (s *NotificationService) NotifyChallengeCompleted(challengeID string, compl
 	}
 }
 
+// NotifyUserChallengeCompleted sends a celebration message directly to a user who completed
+func (s *NotificationService) NotifyUserChallengeCompleted(userID int64, challengeName string) {
+	message := fmt.Sprintf("🎉🏆 Congratulations! You've completed \"%s\"!", challengeName)
+	s.bot.Send(TelegramUser{ID: userID}, message)
+}
+
+// NotifyLeave notifies all participants that someone left the challenge
+func (s *NotificationService) NotifyLeave(challengeID string, leaverEmoji, leaverName string, excludeUserID int64) {
+	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
+	if err != nil {
+		return
+	}
+
+	message := fmt.Sprintf("👋 %s %s left the challenge", leaverEmoji, leaverName)
+
+	for _, p := range participants {
+		if p.TelegramID == excludeUserID || !p.NotifyEnabled {
+			continue
+		}
+		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+	}
+}
+
 // NotifyChallengeDeleted notifies all participants that a challenge was deleted
 func (s *NotificationService) NotifyChallengeDeleted(challengeID, challengeName string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)

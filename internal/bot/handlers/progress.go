@@ -36,7 +36,7 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 	userID := c.Sender().ID
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -44,26 +44,40 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	// Check daily limit
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
-	log.Printf("[DEBUG] handleCompleteTask: challengeID=%s, taskID=%d, participantID=%d", challengeID, taskID, participant.ID)
-	log.Printf("[DEBUG] challenge.DailyTaskLimit=%d, participant.TimeOffsetMinutes=%d", challenge.DailyTaskLimit, participant.TimeOffsetMinutes)
+	log.Printf(
+		"[DEBUG] handleCompleteTask: challengeID=%s, taskID=%d, participantID=%d",
+		challengeID,
+		taskID,
+		participant.ID,
+	)
+	log.Printf(
+		"[DEBUG] challenge.DailyTaskLimit=%d, participant.TimeOffsetMinutes=%d",
+		challenge.DailyTaskLimit,
+		participant.TimeOffsetMinutes,
+	)
 
 	if challenge.DailyTaskLimit > 0 {
 		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
 		if err != nil {
 			log.Printf("[DEBUG] CheckDailyLimit error: %v", err)
-			return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 		}
 
-		log.Printf("[DEBUG] PRE-completion limitInfo: Allowed=%v, Completed=%d, Limit=%d", limitInfo.Allowed, limitInfo.Completed, limitInfo.Limit)
+		log.Printf(
+			"[DEBUG] PRE-completion limitInfo: Allowed=%v, Completed=%d, Limit=%d",
+			limitInfo.Allowed,
+			limitInfo.Completed,
+			limitInfo.Limit,
+		)
 
 		if !limitInfo.Allowed {
 			log.Printf("[DEBUG] Daily limit reached BEFORE completion, blocking")
@@ -73,31 +87,49 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	// Check if task is hidden (cannot complete hidden tasks)
 	if challenge.HideFutureTasks {
 		tasks, _ := h.task.GetByChallengeID(challengeID)
 		currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
-		if task.OrderNum > currentTaskNum {
-			return c.Send("🔒 This task is locked.\n\nComplete your previous tasks first.", keyboards.BackToMain())
+		// Only check if there's a current task (currentTaskNum > 0 means not all completed)
+		if currentTaskNum > 0 && task.OrderNum > currentTaskNum {
+			return c.Send(
+				"🔒 This task is locked.\n\nComplete your previous tasks first.",
+				keyboards.BackToMain(),
+			)
 		}
 	}
 
-	log.Printf("[DEBUG] About to call Complete(taskID=%d, participantID=%d)", taskID, participant.ID)
+	log.Printf(
+		"[DEBUG] About to call Complete(taskID=%d, participantID=%d)",
+		taskID,
+		participant.ID,
+	)
 	completion, err := h.completion.Complete(taskID, participant.ID)
 	if err != nil {
 		log.Printf("[DEBUG] Complete() error: %v", err)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
-	log.Printf("[DEBUG] Complete() returned: completion.ID=%d, completion.CompletedAt=%v", completion.ID, completion.CompletedAt)
+	log.Printf(
+		"[DEBUG] Complete() returned: completion.ID=%d, completion.CompletedAt=%v",
+		completion.ID,
+		completion.CompletedAt,
+	)
 
 	// Post-completion check for daily limit (handles race conditions)
 	// If limit exceeded after completion, uncomplete and show limit message
 	if challenge.DailyTaskLimit > 0 {
 		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
-		log.Printf("[DEBUG] POST-completion limitInfo: err=%v, Allowed=%v, Completed=%d, Limit=%d", err, limitInfo.Allowed, limitInfo.Completed, limitInfo.Limit)
+		log.Printf(
+			"[DEBUG] POST-completion limitInfo: err=%v, Allowed=%v, Completed=%d, Limit=%d",
+			err,
+			limitInfo.Allowed,
+			limitInfo.Completed,
+			limitInfo.Limit,
+		)
 		if err == nil && limitInfo != nil && limitInfo.Completed > challenge.DailyTaskLimit {
 			// Limit exceeded due to race condition - rollback
 			log.Printf("[DEBUG] Race condition detected! Rolling back completion")
@@ -113,11 +145,22 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 	allCompleted, _ := h.completion.IsAllCompleted(participant.ID, len(tasks))
 
 	// Notify others
-	go h.notification.NotifyTaskCompleted(challengeID, participant.Emoji, participant.DisplayName, task.Title, userID)
+	go h.notification.NotifyTaskCompleted(
+		challengeID,
+		participant.Emoji,
+		participant.DisplayName,
+		task.Title,
+		userID,
+	)
 
 	if allCompleted {
 		// Notify challenge completion
-		go h.notification.NotifyChallengeCompleted(challengeID, participant.Emoji, participant.DisplayName, userID)
+		go h.notification.NotifyChallengeCompleted(
+			challengeID,
+			participant.Emoji,
+			participant.DisplayName,
+			userID,
+		)
 		return h.showCelebration(c, challengeID, participant)
 	}
 
@@ -136,12 +179,12 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 
 // showDailyLimitReached shows the daily limit reached message
 func (h *Handler) showDailyLimitReached(c tele.Context, info *service.DailyLimitInfo) error {
-	msg := "⏱ Daily Limit Reached\n\n"
-	msg += fmt.Sprintf("You've completed %d/%d tasks today.\n\n", info.Completed, info.Limit)
-	msg += fmt.Sprintf("New day starts in: %s\n\n", formatDuration(info.TimeToReset))
-	msg += "Come back tomorrow to continue!"
+	msg := "🕓 <i>Daily Limit Reached!</i>\n\n"
+	msg += fmt.Sprintf("You've completed <b>%d/%d</b> tasks today.\n\n", info.Completed, info.Limit)
+	msg += fmt.Sprintf("New day starts in: <b>%s</b>\n\n", formatDuration(info.TimeToReset))
+	msg += "🙌 <i>Come back tomorrow to continue!</i>"
 
-	return c.Send(msg, keyboards.BackToMain())
+	return c.Send(msg, keyboards.BackToMain(), tele.ModeHTML)
 }
 
 // handleCompleteCurrent completes the current task
@@ -153,17 +196,17 @@ func (h *Handler) handleCompleteCurrent(c tele.Context) error {
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	tasks, err := h.task.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
 	if currentTaskNum == 0 {
-		return h.sendError(c, "ℹ️ You've already completed all tasks!")
+		return h.sendError(c, "🎉 You've already crushed all the tasks!")
 	}
 
 	// Find task ID for current task number
@@ -183,7 +226,7 @@ func (h *Handler) handleUncompleteTask(c tele.Context, taskIDStr string) error {
 	userID := c.Sender().ID
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -191,12 +234,12 @@ func (h *Handler) handleUncompleteTask(c tele.Context, taskIDStr string) error {
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	err = h.completion.Uncomplete(taskID, participant.ID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	return h.showTaskDetail(c, taskIDStr)
@@ -207,7 +250,7 @@ func (h *Handler) showTaskDetail(c tele.Context, taskIDStr string) error {
 	userID := c.Sender().ID
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -215,31 +258,32 @@ func (h *Handler) showTaskDetail(c tele.Context, taskIDStr string) error {
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Task not found.")
+		return h.sendError(c, "🤔 Can't find that task.")
 	}
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	// Check if task is hidden
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	tasks, _ := h.task.GetByChallengeID(challengeID)
 	currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
 
-	if challenge.HideFutureTasks && task.OrderNum > currentTaskNum {
+	// Only show hidden view if there's a current task to work on (currentTaskNum > 0)
+	if challenge.HideFutureTasks && currentTaskNum > 0 && task.OrderNum > currentTaskNum {
 		// Show hidden task view
 		data := views.HiddenTaskDetailData{
 			TaskOrderNum:   task.OrderNum,
 			CurrentTaskNum: currentTaskNum,
 		}
 		text := views.RenderHiddenTaskDetail(data)
-		return c.Send(text, keyboards.HiddenTaskBack())
+		return c.Send(text, keyboards.HiddenTaskBack(), tele.ModeHTML)
 	}
 
 	isCompleted, _ := h.completion.IsCompleted(taskID, participant.ID)
@@ -281,7 +325,7 @@ func (h *Handler) showTaskDetail(c tele.Context, taskIDStr string) error {
 		c.Send(photo)
 	}
 
-	return c.Send(text, keyboards.TaskDetail(taskID, isCompleted))
+	return c.Send(text, keyboards.TaskDetail(taskID, isCompleted), tele.ModeHTML)
 }
 
 // showTeamProgress shows the team progress view
@@ -293,7 +337,7 @@ func (h *Handler) showTeamProgress(c tele.Context) error {
 
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	tasks, _ := h.task.GetByChallengeID(challengeID)
@@ -301,7 +345,7 @@ func (h *Handler) showTeamProgress(c tele.Context) error {
 
 	participants, err := h.participant.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	var progressList []*views.ParticipantProgress
@@ -322,7 +366,7 @@ func (h *Handler) showTeamProgress(c tele.Context) error {
 	}
 
 	text := views.RenderTeamProgress(data)
-	return c.Send(text, keyboards.TeamProgress())
+	return c.Send(text, keyboards.TeamProgress(), tele.ModeHTML)
 }
 
 // showAllTasks shows the full list of all tasks
@@ -334,17 +378,17 @@ func (h *Handler) showAllTasks(c tele.Context) error {
 
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	tasks, err := h.task.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	// Get completion data
@@ -369,7 +413,11 @@ func (h *Handler) showAllTasks(c tele.Context) error {
 }
 
 // showCelebration shows the celebration view
-func (h *Handler) showCelebration(c tele.Context, challengeID string, participant *domain.Participant) error {
+func (h *Handler) showCelebration(
+	c tele.Context,
+	challengeID string,
+	participant *domain.Participant,
+) error {
 	challenge, _ := h.challenge.GetByID(challengeID)
 	tasks, _ := h.task.GetByChallengeID(challengeID)
 	totalTasks := len(tasks)
@@ -400,6 +448,5 @@ func (h *Handler) showCelebration(c tele.Context, challengeID string, participan
 	}
 
 	text := views.RenderCelebration(data)
-	return c.Send(text, keyboards.Celebration())
+	return c.Send(text, keyboards.Celebration(), tele.ModeHTML)
 }
-

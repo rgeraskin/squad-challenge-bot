@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
@@ -83,7 +84,7 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	if adminActions[action] {
 		isAdmin, _ := h.checkAdminAccess(c)
 		if !isAdmin {
-			return h.sendError(c, "⚠️ You don't have permission to perform this action.")
+			return h.sendError(c, "🔒 Sorry, only the admin can do that!")
 		}
 	}
 
@@ -185,6 +186,9 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 			return h.handleConfirmDeleteTask(c, parts[1])
 		}
 	case "cancel_delete_task":
+		if len(parts) > 1 {
+			return h.handleEditTask(c, parts[1])
+		}
 		return h.handleEditTasks(c)
 	case "edit_challenge_name":
 		return h.handleEditChallengeName(c)
@@ -321,19 +325,37 @@ func (h *Handler) handleCancel(c tele.Context) error {
 			return h.showStartMenu(c)
 		}
 
+		// Get task_id before resetting state (for edit task flows)
+		var taskID int64
+		if tempData != nil {
+			if tid, ok := tempData["task_id"]; ok {
+				if tidFloat, ok := tid.(float64); ok {
+					taskID = int64(tidFloat)
+				} else if tidInt, ok := tid.(int64); ok {
+					taskID = tidInt
+				}
+			}
+		}
+
 		h.state.ResetKeepChallenge(userID)
 
 		// Check if we were in admin flow
 		switch userState.State {
+		case domain.StateAwaitingEditTitle,
+			domain.StateAwaitingEditDescription,
+			domain.StateAwaitingEditImage:
+			// Return to edit task view
+			if taskID > 0 {
+				return h.handleEditTask(c, fmt.Sprintf("%d", taskID))
+			}
+			return h.handleEditTasks(c)
 		case domain.StateAwaitingTaskTitle,
 			domain.StateAwaitingTaskImage,
 			domain.StateAwaitingTaskDescription,
-			domain.StateAwaitingEditTitle,
-			domain.StateAwaitingEditDescription,
-			domain.StateAwaitingEditImage,
 			domain.StateReorderSelectTask,
 			domain.StateReorderSelectPosition,
 			domain.StateAwaitingNewChallengeName,
+			domain.StateAwaitingNewChallengeDescription,
 			domain.StateAwaitingNewDailyLimit:
 			return h.showAdminPanel(c, userState.CurrentChallenge)
 		case domain.StateAwaitingNewName,

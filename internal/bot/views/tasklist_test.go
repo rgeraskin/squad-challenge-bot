@@ -32,7 +32,7 @@ func TestRenderTaskList(t *testing.T) {
 	if !strings.Contains(result, "Test Challenge") {
 		t.Error("Should contain challenge name")
 	}
-	if !strings.Contains(result, "1/3 tasks") {
+	if !strings.Contains(result, "1/3 done") {
 		t.Error("Should contain progress")
 	}
 	if !strings.Contains(result, "2 members") {

@@ -21,12 +21,9 @@ func TestRenderTeamProgress(t *testing.T) {
 	if !strings.Contains(result, "Squad Progress") {
 		t.Error("Should contain 'Squad Progress'")
 	}
-	if !strings.Contains(result, "Test Challenge") {
-		t.Error("Should contain challenge name")
-	}
 
 	// Check admin indicator
-	if !strings.Contains(result, "(Admin)") {
+	if !strings.Contains(result, "(admin)") {
 		t.Error("Should show admin indicator")
 	}
 

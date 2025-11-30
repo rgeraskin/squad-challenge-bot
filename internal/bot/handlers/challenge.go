@@ -20,22 +20,22 @@ func (h *Handler) showMainChallengeView(c tele.Context, challengeID string) erro
 
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	tasks, err := h.task.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil || participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "🤔 Looks like you're not part of this challenge.")
 	}
 
 	participants, err := h.participant.GetByChallengeID(challengeID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Get completion data
@@ -116,17 +116,20 @@ func (h *Handler) handleCreateChallenge(c tele.Context) error {
 	challenges, err := h.challenge.GetByUserID(userID)
 	if err != nil {
 		logger.Error("Failed to get user challenges in create", "user_id", userID, "error", err)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 	logger.Debug("User challenges count", "user_id", userID, "count", len(challenges))
 	if len(challenges) >= service.MaxChallengesPerUser {
 		logger.Warn("User reached max challenges", "user_id", userID, "count", len(challenges))
-		return h.sendError(c, "❌ You've reached the maximum of 10 active challenges.")
+		return h.sendError(c, "😬 Whoa, you've hit the limit of 10 challenges!")
 	}
 
 	logger.Debug("Setting state to awaiting challenge name", "user_id", userID)
 	h.state.SetState(userID, domain.StateAwaitingChallengeName)
-	err = c.Send("Enter challenge name:", keyboards.CancelOnly())
+	err = c.Send(
+		"🏆 Let's create a challenge!\n\nWhat do you want to call it?",
+		keyboards.CancelOnly(),
+	)
 	if err != nil {
 		logger.Error("Failed to send challenge name prompt", "user_id", userID, "error", err)
 	} else {
@@ -142,7 +145,11 @@ func (h *Handler) handleJoinChallenge(c tele.Context) error {
 
 	logger.Debug("Setting state to awaiting challenge ID", "user_id", userID)
 	h.state.SetState(userID, domain.StateAwaitingChallengeID)
-	err := c.Send("Enter the Challenge ID:", keyboards.CancelOnly())
+	err := c.Send(
+		"🔗 <i>Got an invite?</i>\n\nPaste the Challenge ID below",
+		keyboards.CancelOnly(),
+		tele.ModeHTML,
+	)
 	if err != nil {
 		logger.Error("Failed to send challenge ID prompt", "user_id", userID, "error", err)
 	} else {
@@ -156,7 +163,7 @@ func (h *Handler) processChallengeName(c tele.Context, name string) error {
 	userID := c.Sender().ID
 
 	if len(name) == 0 || len(name) > 50 {
-		return c.Send("❌ Challenge name must be 1-50 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😬 Keep it between 1-50 characters, please!", keyboards.CancelOnly())
 	}
 
 	tempData := map[string]interface{}{
@@ -164,7 +171,7 @@ func (h *Handler) processChallengeName(c tele.Context, name string) error {
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingChallengeDescription, tempData)
 
-	return c.Send("Enter challenge description (or click Skip):", keyboards.SkipCancel())
+	return c.Send("📝 Want to add a description?\n\n(or tap Skip)", keyboards.SkipCancel())
 }
 
 // processChallengeDescription processes challenge description input during creation
@@ -172,7 +179,7 @@ func (h *Handler) processChallengeDescription(c tele.Context, description string
 	userID := c.Sender().ID
 
 	if len(description) > 500 {
-		return c.Send("❌ Description must be 500 characters or less. Try again:", keyboards.SkipCancel())
+		return c.Send("😬 That's a bit long! Keep it under 500 characters.", keyboards.SkipCancel())
 	}
 
 	var tempData map[string]interface{}
@@ -180,7 +187,7 @@ func (h *Handler) processChallengeDescription(c tele.Context, description string
 	tempData["challenge_description"] = description
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("Enter your display name:", keyboards.CancelOnly())
+	return c.Send("👤 What should we call you?", keyboards.CancelOnly())
 }
 
 // skipChallengeDescription skips the description step
@@ -192,7 +199,7 @@ func (h *Handler) skipChallengeDescription(c tele.Context) error {
 	tempData["challenge_description"] = ""
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("Enter your display name:", keyboards.CancelOnly())
+	return c.Send("👤 What should we call you?", keyboards.CancelOnly())
 }
 
 // processCreatorName processes creator name input during creation
@@ -200,7 +207,7 @@ func (h *Handler) processCreatorName(c tele.Context, name string) error {
 	userID := c.Sender().ID
 
 	if len(name) == 0 || len(name) > 30 {
-		return c.Send("❌ Display name must be 1-30 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😬 Keep it between 1-30 characters!", keyboards.CancelOnly())
 	}
 
 	var tempData map[string]interface{}
@@ -208,7 +215,10 @@ func (h *Handler) processCreatorName(c tele.Context, name string) error {
 	tempData["display_name"] = name
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, tempData)
 
-	return c.Send("Choose your emoji or send your own:", keyboards.EmojiSelector(nil))
+	return c.Send(
+		"🎨 Pick an emoji that represents you!\n\n(or send your own)",
+		keyboards.EmojiSelector(nil),
+	)
 }
 
 // processCreatorEmoji processes creator emoji input during creation
@@ -220,7 +230,7 @@ func (h *Handler) processCreatorEmoji(c tele.Context, emoji string) error {
 	tempData["emoji"] = emoji
 	h.state.SetStateWithData(userID, domain.StateAwaitingDailyLimit, tempData)
 
-	msg := "⏱ Daily Task Limit\n\nHow many tasks can each participant complete per day?\n\nEnter a number (1-50) or tap Skip for unlimited."
+	msg := "🕓 Daily Task Limit\n\nHow many tasks can people complete per day?\n\nEnter a number (1-50) or tap Skip for unlimited"
 	return c.Send(msg, keyboards.SkipDailyLimit())
 }
 
@@ -230,7 +240,7 @@ func (h *Handler) processDailyLimit(c tele.Context, input string) error {
 
 	limit, err := strconv.Atoi(strings.TrimSpace(input))
 	if err != nil || limit < 1 || limit > 50 {
-		return c.Send("❌ Please enter a number between 1 and 50:", keyboards.SkipDailyLimit())
+		return c.Send("🔢 Pick a number between 1 and 50:", keyboards.SkipDailyLimit())
 	}
 
 	var tempData map[string]interface{}
@@ -255,14 +265,14 @@ func (h *Handler) skipDailyLimit(c tele.Context) error {
 
 // askHideFutureTasks shows the hide future tasks choice
 func (h *Handler) askHideFutureTasks(c tele.Context) error {
-	msg := `👁 Hide Future Tasks
+	msg := `👁 Hide Future Tasks?
 
-Do you want to hide task names until participants reach them?
+Want to keep upcoming tasks a mystery?
 
 When enabled:
-• Participants only see names of completed tasks and their current task
-• Future tasks show "🔒 Complete previous tasks to unlock"
-• Each participant sees based on their own progress`
+• People only see their current task and completed ones
+• Future tasks are hidden until they get there
+• Everyone sees based on their own progress`
 
 	return c.Send(msg, keyboards.HideFutureTasksChoice())
 }
@@ -282,8 +292,11 @@ func (h *Handler) processHideFutureTasks(c tele.Context, hide bool) error {
 // promptSyncTime shows the time sync prompt
 func (h *Handler) promptSyncTime(c tele.Context, isCreator bool) error {
 	serverTime := time.Now().UTC().Format("15:04")
-	msg := fmt.Sprintf("🕐 Synchronize Your Clock\n\nPlease enter your current time in 24-hour format (HH:MM).\nExample: 14:30 or 09:15\n\nThis helps us track your daily progress correctly.\n\nCurrent server time: %s", serverTime)
-	return c.Send(msg, keyboards.SkipSyncTime(isCreator))
+	msg := fmt.Sprintf(
+		"🕐 <i>Sync Your Clock</i>\n\nThis helps track your daily progress right!\n\nWhat time is it for you? (HH:MM format)\n<i>Example: 14:30 or 09:15</i>\n\nBTW server time is <b>%s</b>",
+		serverTime,
+	)
+	return c.Send(msg, keyboards.SkipSyncTime(isCreator), tele.ModeHTML)
 }
 
 // parseTimeInput validates HH:MM format and calculates offset from server time
@@ -325,7 +338,10 @@ func parseTimeInput(input string) (offsetMinutes int, err error) {
 func (h *Handler) processCreatorSyncTime(c tele.Context, input string) error {
 	offset, err := parseTimeInput(input)
 	if err != nil {
-		return c.Send("❌ Invalid time format. Please enter time as HH:MM (e.g., 14:30):", keyboards.SkipSyncTime(true))
+		return c.Send(
+			"🤔 That doesn't look right. Try HH:MM format (e.g., 14:30):",
+			keyboards.SkipSyncTime(true),
+		)
 	}
 
 	return h.finishChallengeCreation(c, offset)
@@ -360,27 +376,36 @@ func (h *Handler) finishChallengeCreation(c tele.Context, timeOffset int) error 
 	}
 
 	// Create challenge
-	challenge, err := h.challenge.Create(challengeName, challengeDescription, userID, dailyLimit, hideFutureTasks)
+	challenge, err := h.challenge.Create(
+		challengeName,
+		challengeDescription,
+		userID,
+		dailyLimit,
+		hideFutureTasks,
+	)
 	if err != nil {
 		h.state.Reset(userID)
 		if err == service.ErrMaxChallengesReached {
-			return h.sendError(c, "❌ You've reached the maximum of 10 active challenges.")
+			return h.sendError(c, "😬 Whoa, you've hit the limit of 10 challenges!")
 		}
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Add creator as first participant with time offset
 	_, err = h.participant.Join(challenge.ID, userID, displayName, emoji, timeOffset)
 	if err != nil {
 		h.state.Reset(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Set current challenge and reset state
 	h.state.SetCurrentChallenge(userID, challenge.ID)
 	h.state.ResetKeepChallenge(userID)
 
-	msg := fmt.Sprintf("✅ Challenge \"%s\" created!\n\nYou are the admin of this challenge.\nNow add tasks to your challenge.", challengeName)
+	msg := fmt.Sprintf(
+		"🎉 \"%s\" is live!\n\nYou're the admin — now let's add some tasks!",
+		challengeName,
+	)
 	c.Send(msg)
 
 	// Show admin panel
@@ -393,16 +418,19 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 
 	// Validate ID format
 	if len(id) != 8 {
-		return c.Send("❌ Challenge not found. Check the ID and try again.", keyboards.CancelOnly())
+		return c.Send("🤔 Hmm, can't find that one. Double-check the ID?", keyboards.CancelOnly())
 	}
 
 	// Check if challenge exists
 	challenge, err := h.challenge.GetByID(id)
 	if err != nil {
 		if err == service.ErrChallengeNotFound {
-			return c.Send("❌ Challenge not found. Check the ID and try again.", keyboards.CancelOnly())
+			return c.Send(
+				"🤔 Hmm, can't find that one. Double-check the ID?",
+				keyboards.CancelOnly(),
+			)
 		}
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Check if can join
@@ -410,12 +438,12 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 		switch err {
 		case service.ErrChallengeFull:
 			h.state.Reset(userID)
-			return h.sendError(c, "❌ This challenge is full (10/10 participants).")
+			return h.sendError(c, "😬 Bummer! This challenge is full (10/10).")
 		case service.ErrAlreadyMember:
 			h.state.Reset(userID)
-			return c.Send("ℹ️ You're already participating in this challenge.")
+			return c.Send("👋 Hey, you're already in this one!")
 		default:
-			return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 		}
 	}
 
@@ -430,15 +458,20 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 
 	dailyLimitText := "unlimited"
 	if challenge.DailyTaskLimit > 0 {
-		dailyLimitText = fmt.Sprintf("%d", challenge.DailyTaskLimit)
+		dailyLimitText = fmt.Sprintf("%d/day", challenge.DailyTaskLimit)
 	}
 
-	msg := fmt.Sprintf("Challenge: %s\n", challenge.Name)
+	msg := fmt.Sprintf("🎯 <b>%s</b>\n", challenge.Name)
 	if challenge.Description != "" {
-		msg += fmt.Sprintf("%s\n", challenge.Description)
+		msg += fmt.Sprintf("\n<i>%s</i>\n", challenge.Description)
 	}
-	msg += fmt.Sprintf("\nTasks: %d\nMembers: %d\nTasks per day limit: %s\n\nEnter your display name:", taskCount, participantCount, dailyLimitText)
-	return c.Send(msg, keyboards.CancelOnly())
+	msg += fmt.Sprintf(
+		"\n📋 Tasks: <b>%d</b>\n👥 Members: <b>%d</b>\n🕓 Daily tasks limit: <b>%s</b>\n\nWhat should we call you?",
+		taskCount,
+		participantCount,
+		dailyLimitText,
+	)
+	return c.Send(msg, keyboards.CancelOnly(), tele.ModeHTML)
 }
 
 // processParticipantName processes participant name input during join
@@ -446,7 +479,7 @@ func (h *Handler) processParticipantName(c tele.Context, name string) error {
 	userID := c.Sender().ID
 
 	if len(name) == 0 || len(name) > 30 {
-		return c.Send("❌ Display name must be 1-30 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😬 Keep it between 1-30 characters!", keyboards.CancelOnly())
 	}
 
 	var tempData map[string]interface{}
@@ -458,7 +491,10 @@ func (h *Handler) processParticipantName(c tele.Context, name string) error {
 	challengeID := tempData["challenge_id"].(string)
 	usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
 
-	return c.Send("Choose your emoji or send your own:", keyboards.EmojiSelector(usedEmojis))
+	return c.Send(
+		"🎨 Pick an emoji that represents you!\n\n(or send your own)",
+		keyboards.EmojiSelector(usedEmojis),
+	)
 }
 
 // processParticipantEmoji processes participant emoji input during join
@@ -474,7 +510,10 @@ func (h *Handler) processParticipantEmoji(c tele.Context, emoji string) error {
 	usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
 	for _, e := range usedEmojis {
 		if e == emoji {
-			return c.Send("❌ This emoji is already taken. Choose another:", keyboards.EmojiSelector(usedEmojis))
+			return c.Send(
+				"😬 Someone already has that one! Pick another:",
+				keyboards.EmojiSelector(usedEmojis),
+			)
 		}
 	}
 
@@ -490,7 +529,10 @@ func (h *Handler) processSyncTime(c tele.Context, input string) error {
 
 	offset, err := parseTimeInput(input)
 	if err != nil {
-		return c.Send("❌ Invalid time format. Please enter time as HH:MM (e.g., 14:30):", keyboards.SkipSyncTime(false))
+		return c.Send(
+			"🤔 That doesn't look right. Try HH:MM format (e.g., 14:30):",
+			keyboards.SkipSyncTime(false),
+		)
 	}
 
 	// Check if we're in join flow (has temp data with challenge_id) or settings flow
@@ -544,10 +586,13 @@ func (h *Handler) finishJoinChallenge(c tele.Context, timeOffset int) error {
 	if err != nil {
 		if err == service.ErrEmojiTaken {
 			usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
-			return c.Send("❌ This emoji is already taken. Choose another:", keyboards.EmojiSelector(usedEmojis))
+			return c.Send(
+				"😬 Someone already has that one! Pick another:",
+				keyboards.EmojiSelector(usedEmojis),
+			)
 		}
 		h.state.Reset(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Set current challenge and reset state
@@ -557,6 +602,10 @@ func (h *Handler) finishJoinChallenge(c tele.Context, timeOffset int) error {
 	// Notify others
 	go h.notification.NotifyJoin(challengeID, participant.Emoji, participant.DisplayName, userID)
 
-	msg := fmt.Sprintf("\n🎯 CHALLENGE ACCEPTED! 🎯\n\nWelcome to \"%s\", %s!", challengeName, displayName)
-	return c.Send(msg, keyboards.JoinWelcome(challengeID))
+	msg := fmt.Sprintf(
+		"🎯 <i>You're in!</i>\n\nWelcome to \"%s\", <b>%s</b>! Let's crush it 💪",
+		challengeName,
+		displayName,
+	)
+	return c.Send(msg, keyboards.JoinWelcome(challengeID), tele.ModeHTML)
 }

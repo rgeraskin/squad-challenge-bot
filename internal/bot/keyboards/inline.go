@@ -9,7 +9,10 @@ import (
 )
 
 // StartMenu creates the main menu keyboard
-func StartMenu(challenges []*domain.Challenge, taskCounts, completedCounts map[string]int) *tele.ReplyMarkup {
+func StartMenu(
+	challenges []*domain.Challenge,
+	taskCounts, completedCounts map[string]int,
+) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	rows := make([]tele.Row, 0)
 
@@ -90,7 +93,12 @@ type TaskButton struct {
 }
 
 // MainChallengeView creates the main challenge view keyboard with clickable tasks
-func MainChallengeView(challengeID string, currentTaskNum int, hasAdmin bool, tasks []TaskButton) *tele.ReplyMarkup {
+func MainChallengeView(
+	challengeID string,
+	currentTaskNum int,
+	hasAdmin bool,
+	tasks []TaskButton,
+) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	rows := make([]tele.Row, 0)
 
@@ -157,7 +165,11 @@ func TaskList(tasks []*domain.Task) *tele.ReplyMarkup {
 	rows := make([]tele.Row, 0)
 
 	for _, task := range tasks {
-		btn := menu.Data(fmt.Sprintf("%d. %s", task.OrderNum, task.Title), "task_detail", fmt.Sprintf("%d", task.ID))
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s", task.OrderNum, task.Title),
+			"task_detail",
+			fmt.Sprintf("%d", task.ID),
+		)
 		rows = append(rows, menu.Row(btn))
 	}
 
@@ -221,7 +233,7 @@ func NewCopyTextKeyboard(challengeID, link string) *CopyTextKeyboard {
 				{Text: "🔗 Copy Link", CopyText: &CopyText{Text: link}},
 			},
 			{
-				{Text: "⬅️ Back", Data: "\fback_to_main"},
+				{Text: "⬅️ Back", Data: "\fsettings"},
 			},
 		},
 	}
@@ -239,9 +251,9 @@ func AdminPanel(dailyLimit int, hideFutureTasks bool) *tele.ReplyMarkup {
 	// Daily limit button with current value
 	var limitText string
 	if dailyLimit <= 0 {
-		limitText = "⏱ Daily Limit: ∞"
+		limitText = "🕓 Daily Limit: ∞"
 	} else {
-		limitText = fmt.Sprintf("⏱ Daily Limit: %d", dailyLimit)
+		limitText = fmt.Sprintf("🕓 Daily Limit: %d", dailyLimit)
 	}
 	limitBtn := menu.Data(limitText, "edit_daily_limit")
 
@@ -281,7 +293,11 @@ func EditTasksList(tasks []*domain.Task) *tele.ReplyMarkup {
 	rows := make([]tele.Row, 0)
 
 	for _, task := range tasks {
-		btn := menu.Data(fmt.Sprintf("%d. %s ✏️", task.OrderNum, task.Title), "edit_task", fmt.Sprintf("%d", task.ID))
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s ✏️", task.OrderNum, task.Title),
+			"edit_task",
+			fmt.Sprintf("%d", task.ID),
+		)
 		rows = append(rows, menu.Row(btn))
 	}
 
@@ -299,7 +315,11 @@ func EditTask(taskID int64) *tele.ReplyMarkup {
 
 	editTitleBtn := menu.Data("📝 Edit Title", "edit_task_title", fmt.Sprintf("%d", taskID))
 	editImageBtn := menu.Data("📷 Change Image", "edit_task_image", fmt.Sprintf("%d", taskID))
-	editDescBtn := menu.Data("📄 Edit Description", "edit_task_description", fmt.Sprintf("%d", taskID))
+	editDescBtn := menu.Data(
+		"📄 Edit Description",
+		"edit_task_description",
+		fmt.Sprintf("%d", taskID),
+	)
 	deleteBtn := menu.Data("🗑 Delete Task", "delete_task", fmt.Sprintf("%d", taskID))
 	backBtn := menu.Data("⬅️ Back", "back_to_tasks")
 
@@ -315,7 +335,7 @@ func EditTask(taskID int64) *tele.ReplyMarkup {
 func DeleteTaskConfirm(taskID int64) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	confirmBtn := menu.Data("✅ Yes, delete", "confirm_delete_task", fmt.Sprintf("%d", taskID))
-	cancelBtn := menu.Data("❌ Cancel", "cancel_delete_task")
+	cancelBtn := menu.Data("❌ Cancel", "cancel_delete_task", fmt.Sprintf("%d", taskID))
 	menu.Inline(menu.Row(confirmBtn, cancelBtn))
 	return menu
 }
@@ -335,7 +355,11 @@ func ReorderTasksList(tasks []*domain.Task) *tele.ReplyMarkup {
 	rows := make([]tele.Row, 0)
 
 	for _, task := range tasks {
-		btn := menu.Data(fmt.Sprintf("%d. %s", task.OrderNum, task.Title), "reorder_select", fmt.Sprintf("%d", task.ID))
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s", task.OrderNum, task.Title),
+			"reorder_select",
+			fmt.Sprintf("%d", task.ID),
+		)
 		rows = append(rows, menu.Row(btn))
 	}
 
@@ -394,18 +418,19 @@ func Settings(notifyEnabled bool, isAdmin bool) *tele.ReplyMarkup {
 
 	changeNameBtn := menu.Data("✏️ Change Name", "change_name")
 	changeEmojiBtn := menu.Data("😀 Change Emoji", "change_emoji")
-	syncTimeBtn := menu.Data("🕐 Sync Time", "sync_time")
+	// syncTimeBtn := menu.Data("🕐 Sync Time", "sync_time")
 	shareBtn := menu.Data("🔗 Share the Challenge", "share_id")
 	backBtn := menu.Data("⬅️ Back", "back_to_main")
 
 	rows := []tele.Row{
 		menu.Row(notifyBtn),
 		menu.Row(changeNameBtn, changeEmojiBtn),
-		menu.Row(syncTimeBtn, shareBtn),
+		// menu.Row(syncTimeBtn, shareBtn),
+		menu.Row(shareBtn),
 	}
 
 	if !isAdmin {
-		leaveBtn := menu.Data("🚫 Leave Challenge", "leave_challenge")
+		leaveBtn := menu.Data("🚫 Leave", "leave_challenge")
 		rows = append(rows, menu.Row(leaveBtn, backBtn))
 	} else {
 		rows = append(rows, menu.Row(backBtn))
@@ -436,7 +461,7 @@ func JoinWelcome(challengeID string) *tele.ReplyMarkup {
 func Celebration() *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	teamBtn := menu.Data("👥 View Squad", "team_progress")
-	mainBtn := menu.Data("🏠 Main Menu", "exit_challenge")
+	mainBtn := menu.Data("🚪 Exit Challenge", "exit_challenge")
 	menu.Inline(menu.Row(teamBtn, mainBtn))
 	return menu
 }

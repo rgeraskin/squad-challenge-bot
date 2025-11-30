@@ -13,7 +13,7 @@ func (h *Handler) HandleText(c tele.Context) error {
 
 	userState, err := h.state.Get(userID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	switch userState.State {
@@ -28,7 +28,7 @@ func (h *Handler) HandleText(c tele.Context) error {
 		if util.IsValidEmoji(text) {
 			return h.processCreatorEmoji(c, text)
 		}
-		return c.Send("❌ Please send a single emoji.")
+		return c.Send("🎨 Just one emoji please!")
 	case domain.StateAwaitingDailyLimit:
 		return h.processDailyLimit(c, text)
 	case domain.StateAwaitingCreatorSyncTime:
@@ -53,7 +53,7 @@ func (h *Handler) HandleText(c tele.Context) error {
 		if util.IsValidEmoji(text) {
 			return h.processParticipantEmoji(c, text)
 		}
-		return c.Send("❌ Please send a single emoji.")
+		return c.Send("🎨 Just one emoji please!")
 	case domain.StateAwaitingSyncTime:
 		return h.processSyncTime(c, text)
 
@@ -72,7 +72,7 @@ func (h *Handler) HandleText(c tele.Context) error {
 		if util.IsValidEmoji(text) {
 			return h.processNewEmoji(c, text)
 		}
-		return c.Send("❌ Please send a single emoji.")
+		return c.Send("🎨 Just one emoji please!")
 
 	default:
 		// Idle state - ignore text or show help
@@ -86,7 +86,7 @@ func (h *Handler) HandlePhoto(c tele.Context) error {
 
 	userState, err := h.state.Get(userID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	photo := c.Message().Photo

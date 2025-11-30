@@ -25,13 +25,20 @@ type ParticipantProgress struct {
 func RenderTeamProgress(data TeamProgressData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("👥 Squad Progress - %s\n", data.ChallengeName))
-	sb.WriteString("─────────────────────────\n\n")
+	sb.WriteString("👥 <i>Squad Progress</i>\n\n")
 
 	// Sort by completion percentage descending
 	sort.Slice(data.Participants, func(i, j int) bool {
-		pctI := float64(data.Participants[i].CompletedTasks) / float64(max(data.Participants[i].TotalTasks, 1))
-		pctJ := float64(data.Participants[j].CompletedTasks) / float64(max(data.Participants[j].TotalTasks, 1))
+		pctI := float64(
+			data.Participants[i].CompletedTasks,
+		) / float64(
+			max(data.Participants[i].TotalTasks, 1),
+		)
+		pctJ := float64(
+			data.Participants[j].CompletedTasks,
+		) / float64(
+			max(data.Participants[j].TotalTasks, 1),
+		)
 		return pctI > pctJ
 	})
 
@@ -39,7 +46,7 @@ func RenderTeamProgress(data TeamProgressData) string {
 		// Name with admin indicator
 		name := p.Name
 		if p.IsAdmin {
-			name += " (Admin)"
+			name += " (admin)"
 		}
 
 		// Progress bar

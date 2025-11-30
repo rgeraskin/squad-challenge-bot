@@ -109,7 +109,7 @@ When enabled:
 ```
 Row 1: "➕ Add Task" | "📋 Edit Tasks"
 Row 2: "✏️ Name" | "📝 Description"
-Row 3: "⏱ Daily Limit: X"
+Row 3: "🕓 Daily Limit: X"
 Row 4: "🗑 Delete Challenge" | "🏠 Main Menu"
 ```
 
@@ -117,7 +117,7 @@ Row 4: "🗑 Delete Challenge" | "🏠 Main Menu"
 ```
 Row 1: "➕ Add Task" | "📋 Edit Tasks"
 Row 2: "✏️ Name" | "📝 Description"
-Row 3: "⏱ Daily Limit: X" | "👁 Tasks: Sequential" (or "👁 Tasks: All Visible")
+Row 3: "🕓 Daily Limit: X" | "👁 Tasks: Sequential" (or "👁 Tasks: All Visible")
 Row 4: "🗑 Delete Challenge" | "🏠 Main Menu"
 ```
 
@@ -339,23 +339,23 @@ challenge, err := h.challenge.Create(name, description, creatorID, dailyLimit, h
 
 ## File Change Summary
 
-| File | Changes |
-|------|---------|
-| `migrations/004_hide_future_tasks.sql` | NEW - add column |
-| `repository/sqlite/db.go` | Add migration to list |
-| `domain/challenge.go` | Add HideFutureTasks field |
-| `domain/state.go` | Add StateAwaitingHideFutureTasks |
-| `repository/sqlite/challenge.go` | Update Create, GetByID, add UpdateHideFutureTasks |
-| `repository/interfaces.go` | Update ChallengeRepository interface |
-| `service/challenge.go` | Update Create signature, add UpdateHideFutureTasks, ToggleHideFutureTasks |
-| `handlers/challenge.go` | Add askHideFutureTasks, processHideFutureTasks, modify flow |
-| `handlers/admin.go` | Update showAdminPanel, add handleToggleHideFutureTasks |
-| `handlers/task.go` | Update handleViewTask for hidden task check |
-| `handlers/progress.go` | Add hidden task completion check |
-| `handlers/callbacks.go` | Add hide_future_yes, hide_future_no, toggle_hide_future actions |
-| `keyboards/inline.go` | Update AdminPanel, add HideFutureTasksChoice |
-| `views/tasklist.go` | Update TaskListData, RenderTaskList for hidden tasks |
-| `views/taskdetail.go` | Update TaskDetailData, RenderTaskDetail for hidden tasks |
+| File                                   | Changes                                                                   |
+|----------------------------------------|---------------------------------------------------------------------------|
+| `migrations/004_hide_future_tasks.sql` | NEW - add column                                                          |
+| `repository/sqlite/db.go`              | Add migration to list                                                     |
+| `domain/challenge.go`                  | Add HideFutureTasks field                                                 |
+| `domain/state.go`                      | Add StateAwaitingHideFutureTasks                                          |
+| `repository/sqlite/challenge.go`       | Update Create, GetByID, add UpdateHideFutureTasks                         |
+| `repository/interfaces.go`             | Update ChallengeRepository interface                                      |
+| `service/challenge.go`                 | Update Create signature, add UpdateHideFutureTasks, ToggleHideFutureTasks |
+| `handlers/challenge.go`                | Add askHideFutureTasks, processHideFutureTasks, modify flow               |
+| `handlers/admin.go`                    | Update showAdminPanel, add handleToggleHideFutureTasks                    |
+| `handlers/task.go`                     | Update handleViewTask for hidden task check                               |
+| `handlers/progress.go`                 | Add hidden task completion check                                          |
+| `handlers/callbacks.go`                | Add hide_future_yes, hide_future_no, toggle_hide_future actions           |
+| `keyboards/inline.go`                  | Update AdminPanel, add HideFutureTasksChoice                              |
+| `views/tasklist.go`                    | Update TaskListData, RenderTaskList for hidden tasks                      |
+| `views/taskdetail.go`                  | Update TaskDetailData, RenderTaskDetail for hidden tasks                  |
 
 ---
 

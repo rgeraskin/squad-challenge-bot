@@ -20,21 +20,21 @@ func (h *Handler) showSettings(c tele.Context) error {
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 
 	if participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	isAdmin := challenge.CreatorID == userID
 
 	// Calculate user's local time
-	userLocalTime := service.GetUserLocalTime(participant.TimeOffsetMinutes)
+	// userLocalTime := service.GetUserLocalTime(participant.TimeOffsetMinutes)
 
-	msg := "⚙️ Settings\n\n"
-	msg += fmt.Sprintf("Current challenge: %s\n", challenge.Name)
-	msg += fmt.Sprintf("Your emoji: %s\n", participant.Emoji)
-	msg += fmt.Sprintf("Your name: %s\n", participant.DisplayName)
-	msg += fmt.Sprintf("🕐 Your time: %s\n", userLocalTime.Format("15:04"))
+	msg := "⚙️ <i>Your Settings</i>\n\n"
+	msg += fmt.Sprintf("<b>Challenge:</b> %s\n", challenge.Name)
+	msg += fmt.Sprintf("<b>Name:</b> %s\n", participant.DisplayName)
+	msg += fmt.Sprintf("<b>Emoji:</b> %s\n", participant.Emoji)
+	// msg += fmt.Sprintf("<b>Time:</b> %s\n", userLocalTime.Format("15:04"))
 
-	return c.Send(msg, keyboards.Settings(participant.NotifyEnabled, isAdmin))
+	return c.Send(msg, keyboards.Settings(participant.NotifyEnabled, isAdmin), tele.ModeHTML)
 }
 
 // handleToggleNotifications toggles notifications
@@ -46,18 +46,18 @@ func (h *Handler) handleToggleNotifications(c tele.Context) error {
 
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	newState, err := h.participant.ToggleNotifications(participant.ID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	if newState {
-		c.Send("🔔 Notifications enabled")
+		c.Send("🔔 Notifications on!")
 	} else {
-		c.Send("🔕 Notifications disabled")
+		c.Send("🔕 Notifications off — peace and quiet!")
 	}
 
 	return h.showSettings(c)
@@ -67,7 +67,7 @@ func (h *Handler) handleToggleNotifications(c tele.Context) error {
 func (h *Handler) handleChangeName(c tele.Context) error {
 	userID := c.Sender().ID
 	h.state.SetState(userID, domain.StateAwaitingNewName)
-	return c.Send("Enter new display name:", keyboards.CancelOnly())
+	return c.Send("✏️ What should we call you?", keyboards.CancelOnly())
 }
 
 // processNewName processes new display name
@@ -75,7 +75,7 @@ func (h *Handler) processNewName(c tele.Context, name string) error {
 	userID := c.Sender().ID
 
 	if len(name) == 0 || len(name) > 30 {
-		return c.Send("❌ Display name must be 1-30 characters. Try again:", keyboards.CancelOnly())
+		return c.Send("😅 Keep it between 1-30 characters:", keyboards.CancelOnly())
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -84,16 +84,16 @@ func (h *Handler) processNewName(c tele.Context, name string) error {
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	if err := h.participant.UpdateName(participant.ID, name); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send(fmt.Sprintf("✅ Display name changed to \"%s\"", name))
+	c.Send(fmt.Sprintf("✅ Nice! You're now \"%s\"", name))
 	return h.showSettings(c)
 }
 
@@ -107,7 +107,7 @@ func (h *Handler) handleChangeEmoji(c tele.Context) error {
 	usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
 
 	h.state.SetState(userID, domain.StateAwaitingNewEmoji)
-	return c.Send("Choose your new emoji or send your own:", keyboards.EmojiSelector(usedEmojis))
+	return c.Send("🎨 Pick your new emoji or send your own", keyboards.EmojiSelector(usedEmojis))
 }
 
 // processNewEmoji processes new emoji
@@ -120,20 +120,23 @@ func (h *Handler) processNewEmoji(c tele.Context, emoji string) error {
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	if err := h.participant.UpdateEmoji(participant.ID, emoji, challengeID); err != nil {
 		if err == service.ErrEmojiTaken {
 			usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
-			return c.Send("❌ This emoji is already taken. Choose another:", keyboards.EmojiSelector(usedEmojis))
+			return c.Send(
+				"😬 Someone already has that one! Pick another:",
+				keyboards.EmojiSelector(usedEmojis),
+			)
 		}
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send(fmt.Sprintf("✅ Emoji changed to %s", emoji))
+	c.Send(fmt.Sprintf("✅ You're now %s", emoji))
 	return h.showSettings(c)
 }
 
@@ -146,8 +149,11 @@ func (h *Handler) handleLeaveChallenge(c tele.Context) error {
 
 	challenge, _ := h.challenge.GetByID(challengeID)
 
-	msg := fmt.Sprintf("⚠️ Are you sure you want to leave \"%s\"?\n\nYour progress will be deleted.", challenge.Name)
-	return c.Send(msg, keyboards.LeaveConfirm())
+	msg := fmt.Sprintf(
+		"🙅‍♀️ <i>Leave \"%s\"?</i>\n\nYour progress will be gone <b>forever!</b>",
+		challenge.Name,
+	)
+	return c.Send(msg, keyboards.LeaveConfirm(), tele.ModeHTML)
 }
 
 // handleConfirmLeave confirms leaving challenge
@@ -159,15 +165,22 @@ func (h *Handler) handleConfirmLeave(c tele.Context) error {
 
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
+
+	// Save participant info before deletion for notification
+	emoji := participant.Emoji
+	name := participant.DisplayName
 
 	if err := h.participant.Leave(participant.ID); err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
+	// Notify others
+	go h.notification.NotifyLeave(challengeID, emoji, name, userID)
+
 	h.state.Reset(userID)
-	c.Send("✅ You left the challenge.")
+	c.Send("👋 You've left the challenge. See ya!")
 	return h.showStartMenu(c)
 }
 
@@ -184,7 +197,10 @@ func (h *Handler) processSettingsSyncTime(c tele.Context, input string) error {
 
 	offset, err := parseTimeInput(input)
 	if err != nil {
-		return c.Send("❌ Invalid time format. Please enter time as HH:MM (e.g., 14:30):", keyboards.SkipSyncTime(false))
+		return c.Send(
+			"🤔 Hmm, that doesn't look right. Use HH:MM format (e.g., 14:30):",
+			keyboards.SkipSyncTime(false),
+		)
 	}
 
 	userState, _ := h.state.Get(userID)
@@ -193,16 +209,16 @@ func (h *Handler) processSettingsSyncTime(c tele.Context, input string) error {
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	if err := h.participant.UpdateTimeOffset(participant.ID, offset); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send("✅ Time synchronized!")
+	c.Send("✅ Time synced! 🕐")
 	return h.showSettings(c)
 }
 
@@ -216,16 +232,16 @@ func (h *Handler) skipSettingsSyncTime(c tele.Context) error {
 	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if participant == nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "❌ You're not a participant of this challenge.")
+		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
 	// Set offset to 0 (server time)
 	if err := h.participant.UpdateTimeOffset(participant.ID, 0); err != nil {
 		h.state.ResetKeepChallenge(userID)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	h.state.ResetKeepChallenge(userID)
-	c.Send("✅ Using server time!")
+	c.Send("✅ Using server time! 🌐")
 	return h.showSettings(c)
 }

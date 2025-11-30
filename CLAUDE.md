@@ -82,5 +82,18 @@ Migrations in `repository/sqlite/migrations/` are embedded and run in order on s
 - Max 10 challenges per user
 - Max 10 participants per challenge
 - Max 50 tasks per challenge
+- Daily task limit: 0-50 (0 = unlimited)
 - Emojis must be unique within a challenge
 - Only challenge creator (admin) can modify tasks/settings
+
+## Key Features
+
+- **Daily Limits**: Challenges can limit tasks completed per day (enforced per user's local time)
+- **Sequential Mode**: `HideFutureTasks` hides tasks until previous ones are completed
+- **Time Zone Sync**: Each participant stores `TimeOffsetMinutes` for accurate daily limit resets
+
+## Message Formatting
+
+- Use `tele.ModeHTML` when sending messages with HTML tags (`<b>`, `<i>`, etc.)
+- Bot messages use friendly, casual tone with emojis
+- Admin indicator uses 👑 emoji in team progress views

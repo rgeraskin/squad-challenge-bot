@@ -40,15 +40,15 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
 		if err == service.ErrChallengeNotFound {
-			return h.sendError(c, "❌ Challenge not found. Check the ID and try again.")
+			return h.sendError(c, "🤔 Hmm, can't find that challenge. Double-check the ID?")
 		}
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Check if user is already a member
 	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
 	if err != nil {
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	if participant != nil {
@@ -61,12 +61,12 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 	if err := h.challenge.CanJoin(challengeID, userID); err != nil {
 		switch err {
 		case service.ErrChallengeFull:
-			return h.sendError(c, "❌ This challenge is full (10/10 participants).")
+			return h.sendError(c, "😬 Bummer! This challenge is full (10/10).")
 		case service.ErrAlreadyMember:
 			h.state.SetCurrentChallenge(userID, challengeID)
 			return h.showMainChallengeView(c, challengeID)
 		default:
-			return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 		}
 	}
 
@@ -83,10 +83,16 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 
 	dailyLimitText := "unlimited"
 	if challenge.DailyTaskLimit > 0 {
-		dailyLimitText = fmt.Sprintf("%d", challenge.DailyTaskLimit)
+		dailyLimitText = fmt.Sprintf("%d/day", challenge.DailyTaskLimit)
 	}
 
-	msg := fmt.Sprintf("Challenge: %s\n\nTasks: %d\nMembers: %d\nTasks per day limit: %s\n\nEnter your display name:", challenge.Name, taskCount, participantCount, dailyLimitText)
+	msg := fmt.Sprintf(
+		"🎯 %s\n\n📋 %d tasks • 👥 %d members\n🕓 Daily limit: %s\n\nWhat should we call you?",
+		challenge.Name,
+		taskCount,
+		participantCount,
+		dailyLimitText,
+	)
 
 	return c.Send(msg, keyboards.CancelOnly())
 }
@@ -99,7 +105,7 @@ func (h *Handler) showStartMenu(c tele.Context) error {
 	challenges, err := h.challenge.GetByUserID(userID)
 	if err != nil {
 		logger.Error("Failed to get user challenges", "user_id", userID, "error", err)
-		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 	logger.Debug("User challenges loaded", "user_id", userID, "count", len(challenges))
 
@@ -118,16 +124,24 @@ func (h *Handler) showStartMenu(c tele.Context) error {
 		}
 	}
 
-	text := "Welcome to SquadChallengeBot!\n\n"
+	text := "👋 <i>Hey there!</i>\n\n"
 	if len(challenges) > 0 {
-		text += "Your challenges:"
+		text += "Here are your challenges:"
 	} else {
-		text += "You don't have any challenges yet.\nCreate one or join an existing challenge!"
+		text += "No challenges yet — let's fix that!\nCreate your own or join a friend's 🚀"
 	}
 
 	kb := keyboards.StartMenu(challenges, taskCounts, completedCounts)
-	logger.Debug("Sending start menu", "user_id", userID, "challenges_count", len(challenges), "has_keyboard", kb != nil)
-	err = c.Send(text, kb)
+	logger.Debug(
+		"Sending start menu",
+		"user_id",
+		userID,
+		"challenges_count",
+		len(challenges),
+		"has_keyboard",
+		kb != nil,
+	)
+	err = c.Send(text, kb, tele.ModeHTML)
 	if err != nil {
 		logger.Error("Failed to send start menu", "user_id", userID, "error", err)
 	} else {

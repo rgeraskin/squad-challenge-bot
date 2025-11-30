@@ -25,25 +25,23 @@ type ParticipantStatus struct {
 func RenderTaskDetail(data TaskDetailData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Task #%d: %s\n", data.Task.OrderNum, data.Task.Title))
-	sb.WriteString("─────────────────────────\n\n")
-
-	// Status
-	if data.IsCompleted {
-		sb.WriteString("Your status: ✅ Completed\n")
-	} else {
-		sb.WriteString("Your status: ⬜ Not completed\n")
-	}
+	sb.WriteString(fmt.Sprintf("📌 Task #%d: <b>%s</b>\n\n", data.Task.OrderNum, data.Task.Title))
 
 	// Description
 	if data.Task.Description != "" {
-		sb.WriteString("\nDescription:\n")
-		sb.WriteString(data.Task.Description + "\n")
+		sb.WriteString("<i>" + data.Task.Description + "</i>\n\n")
+	}
+
+	// Status
+	if data.IsCompleted {
+		sb.WriteString("🎉 You did it!\n")
+	} else {
+		sb.WriteString("⬜ Not done yet\n")
 	}
 
 	// Completed by
 	if len(data.CompletedBy) > 0 {
-		sb.WriteString("\nCompleted by:\n")
+		sb.WriteString("\n<b>Done:</b>\n")
 		names := make([]string, len(data.CompletedBy))
 		for i, p := range data.CompletedBy {
 			names[i] = fmt.Sprintf("%s %s", p.Emoji, p.Name)
@@ -53,7 +51,7 @@ func RenderTaskDetail(data TaskDetailData) string {
 
 	// Not yet
 	if len(data.NotYet) > 0 {
-		sb.WriteString("\nNot yet:\n")
+		sb.WriteString("\n<b>Still working on it:</b>\n")
 		names := make([]string, len(data.NotYet))
 		for i, p := range data.NotYet {
 			names[i] = fmt.Sprintf("%s %s", p.Emoji, p.Name)
@@ -74,11 +72,10 @@ type HiddenTaskDetailData struct {
 func RenderHiddenTaskDetail(data HiddenTaskDetailData) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("🔒 Task #%d: Hidden\n", data.TaskOrderNum))
-	sb.WriteString("─────────────────────────\n\n")
-	sb.WriteString("This task is not yet unlocked.\n\n")
-	sb.WriteString("Complete your previous tasks first to reveal this task's details.\n\n")
-	sb.WriteString(fmt.Sprintf("Your current task: Task #%d\n", data.CurrentTaskNum))
+	sb.WriteString(fmt.Sprintf("🔒 Task #%d\n\n", data.TaskOrderNum))
+	sb.WriteString("Whoa there! This one's still locked!\n\n")
+	sb.WriteString("<i>Finish your current tasks first to unlock it.</i>\n\n")
+	sb.WriteString(fmt.Sprintf("👉 You're on <b>Task #%d</b> right now\n", data.CurrentTaskNum))
 
 	return sb.String()
 }

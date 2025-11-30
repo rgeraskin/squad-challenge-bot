@@ -70,7 +70,7 @@ func TestHandleStart_NoPayload(t *testing.T) {
 	}
 
 	msg := ctx.LastMessage()
-	if !strings.Contains(msg, "Welcome") {
+	if !strings.Contains(msg, "Hey there") {
 		t.Errorf("Expected welcome message, got: %s", msg)
 	}
 }

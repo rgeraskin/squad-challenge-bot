@@ -6,9 +6,12 @@ A Telegram bot for creating and managing team challenges with task tracking and 
 
 - **Challenge Management**: Create challenges with up to 50 tasks and 10 participants
 - **Task Tracking**: Complete tasks in any order, track progress with visual progress bars
+- **Daily Limits**: Set a daily task limit (1-50 tasks/day) to pace your challenge
+- **Sequential Mode**: Hide future tasks until previous ones are completed
+- **Time Zone Sync**: Sync your local time for accurate daily limit resets
 - **Team Progress**: View team leaderboard sorted by completion percentage
 - **Deep Links**: Share challenges via `t.me/bot?start=CHALLENGE_ID`
-- **Admin Controls**: Rename challenges, reorder/edit/delete tasks
+- **Admin Controls**: Rename challenges, reorder/edit/delete tasks, configure limits
 - **Notifications**: Get notified when teammates complete tasks or finish challenges
 
 ## Requirements
@@ -118,10 +121,11 @@ go test ./internal/service/... -v
 
 ## User Flows
 
-1. **Create Challenge**: Enter name → Enter your display name → Pick emoji
-2. **Join Challenge**: Enter challenge ID → Enter display name → Pick emoji
-3. **Complete Tasks**: Tap task → Mark complete/incomplete
+1. **Create Challenge**: Enter name → Description (optional) → Display name → Pick emoji → Daily limit → Sequential mode → Sync time
+2. **Join Challenge**: Enter challenge ID → Display name → Pick emoji → Sync time
+3. **Complete Tasks**: Tap task → Mark complete/incomplete (respects daily limits and sequential mode)
 4. **View Progress**: See team progress with visual progress bars
+5. **Admin Settings**: Edit name/description, set daily limits, toggle sequential mode, manage tasks
 
 ## Health Checks
 

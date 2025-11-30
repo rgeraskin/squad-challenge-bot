@@ -27,23 +27,29 @@ func RenderTaskList(data TaskListData) string {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("🏆 %s\n", data.ChallengeName))
+	sb.WriteString(fmt.Sprintf("🏆 <b>%s</b>\n", data.ChallengeName))
 	if data.ChallengeDescription != "" {
-		sb.WriteString(fmt.Sprintf("%s\n", data.ChallengeDescription))
+		sb.WriteString(fmt.Sprintf("\n<i>%s</i>\n", data.ChallengeDescription))
 	}
-	sb.WriteString(fmt.Sprintf("Progress: %d/%d tasks • %d members\n", data.CompletedTasks, data.TotalTasks, data.ParticipantCount))
-	sb.WriteString("─────────────────────────\n\n")
+	sb.WriteString(
+		fmt.Sprintf(
+			"\n📊 %d/%d done • 👥 %d members\n\n",
+			data.CompletedTasks,
+			data.TotalTasks,
+			data.ParticipantCount,
+		),
+	)
 
 	if len(data.Tasks) == 0 {
-		sb.WriteString("📭 No tasks yet\n")
-		sb.WriteString("Waiting for admin to add tasks...\n")
+		sb.WriteString("📭 <b>No tasks yet!</b>\n")
+		sb.WriteString("Hang tight, waiting for admin to add some...\n")
 	} else {
 		// Calculate visible range: 2 prev + current + 2 next (max 5)
 		startIdx, endIdx := CalculateVisibleRange(data.CurrentTaskNum, len(data.Tasks))
 
 		// Show count of tasks before the visible range
 		if startIdx > 0 {
-			sb.WriteString(fmt.Sprintf("↑ %d more task(s)\n", startIdx))
+			sb.WriteString(fmt.Sprintf("↑ %d more above\n", startIdx))
 		}
 
 		for i := startIdx; i <= endIdx && i < len(data.Tasks); i++ {
@@ -58,13 +64,13 @@ func RenderTaskList(data TaskListData) string {
 				status = "⬜"
 			}
 
-			// Check if task should be hidden
-			isHidden := data.HideFutureTasks && task.OrderNum > data.CurrentTaskNum
+			// Check if task should be hidden (only if there's a current task to work on)
+			isHidden := data.HideFutureTasks && data.CurrentTaskNum > 0 && task.OrderNum > data.CurrentTaskNum
 
 			// Task line
 			var line string
 			if isHidden {
-				line = fmt.Sprintf("%s %d. <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>", status, task.OrderNum)
+				line = fmt.Sprintf("%s %d. <tg-spoiler>🔒 Complete ↑ to unlock</tg-spoiler>", status, task.OrderNum)
 			} else {
 				line = fmt.Sprintf("%s %d. %s", status, task.OrderNum, task.Title)
 
@@ -89,7 +95,7 @@ func RenderTaskList(data TaskListData) string {
 		// Show count of tasks after the visible range
 		if endIdx < len(data.Tasks)-1 {
 			remaining := len(data.Tasks) - 1 - endIdx
-			sb.WriteString(fmt.Sprintf("↓ %d more task(s)\n", remaining))
+			sb.WriteString(fmt.Sprintf("↓ %d more below\n", remaining))
 		}
 	}
 
@@ -140,11 +146,10 @@ func RenderAllTasks(data AllTasksData) string {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("📋 %s - All Tasks\n", data.ChallengeName))
-	sb.WriteString("─────────────────────────\n\n")
+	sb.WriteString("📋 <i>All Tasks</i>\n\n")
 
 	if len(data.Tasks) == 0 {
-		sb.WriteString("📭 No tasks yet\n")
+		sb.WriteString("📭 No tasks yet!\n")
 	} else {
 		for _, task := range data.Tasks {
 			isCompleted := data.CompletedTaskIDs[task.ID]
@@ -156,8 +161,8 @@ func RenderAllTasks(data AllTasksData) string {
 				status = "⬜"
 			}
 
-			// Check if task should be hidden
-			isHidden := data.HideFutureTasks && task.OrderNum > data.CurrentTaskNum
+			// Check if task should be hidden (only if there's a current task to work on)
+			isHidden := data.HideFutureTasks && data.CurrentTaskNum > 0 && task.OrderNum > data.CurrentTaskNum
 
 			var line string
 			if isHidden {
