@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
 
+	"github.com/rgeraskin/squad-challenge-bot/internal/bot/assets"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/views"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
@@ -448,5 +450,12 @@ func (h *Handler) showCelebration(
 	}
 
 	text := views.RenderCelebration(data)
-	return c.Send(text, keyboards.Celebration(), tele.ModeHTML)
+
+	animation := &tele.Animation{
+		File:     tele.FromReader(bytes.NewReader(assets.ChallengeCompletedGIF)),
+		FileName: "challenge-completed.gif",
+		MIME:     "image/gif",
+		Caption:  text,
+	}
+	return c.Send(animation, keyboards.Celebration(), tele.ModeHTML)
 }

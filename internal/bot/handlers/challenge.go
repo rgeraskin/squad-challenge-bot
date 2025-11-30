@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/rgeraskin/squad-challenge-bot/internal/bot/assets"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/views"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
@@ -127,8 +129,9 @@ func (h *Handler) handleCreateChallenge(c tele.Context) error {
 	logger.Debug("Setting state to awaiting challenge name", "user_id", userID)
 	h.state.SetState(userID, domain.StateAwaitingChallengeName)
 	err = c.Send(
-		"🏆 Let's create a challenge!\n\nWhat do you want to call it?",
+		"🏆 <i>Let's create a challenge!</i>\n\nWhat do you want to call it?",
 		keyboards.CancelOnly(),
+		tele.ModeHTML,
 	)
 	if err != nil {
 		logger.Error("Failed to send challenge name prompt", "user_id", userID, "error", err)
@@ -293,7 +296,7 @@ func (h *Handler) processHideFutureTasks(c tele.Context, hide bool) error {
 func (h *Handler) promptSyncTime(c tele.Context, isCreator bool) error {
 	serverTime := time.Now().UTC().Format("15:04")
 	msg := fmt.Sprintf(
-		"🕐 <i>Sync Your Clock</i>\n\nThis helps track your daily progress right!\n\nWhat time is it for you? (HH:MM format)\n<i>Example: 14:30 or 09:15</i>\n\nBTW server time is <b>%s</b>",
+		"🕐 <i>Sync Your Clock</i>\n\nThis helps track your daily progress right!\n\nWhat time is it for you? (HH:MM format)\n\n<i>Example: 14:30 or 09:15</i>. BTW server time is <b>%s</b>",
 		serverTime,
 	)
 	return c.Send(msg, keyboards.SkipSyncTime(isCreator), tele.ModeHTML)
@@ -403,10 +406,10 @@ func (h *Handler) finishChallengeCreation(c tele.Context, timeOffset int) error 
 	h.state.ResetKeepChallenge(userID)
 
 	msg := fmt.Sprintf(
-		"🎉 \"%s\" is live!\n\nYou're the admin — now let's add some tasks!",
+		"🎉 \"%s\" <b>is live!</b>\n\nYou're the admin — now let's add some tasks!",
 		challengeName,
 	)
-	c.Send(msg)
+	c.Send(msg, tele.ModeHTML)
 
 	// Show admin panel
 	return h.showAdminPanel(c, challenge.ID)
@@ -607,5 +610,11 @@ func (h *Handler) finishJoinChallenge(c tele.Context, timeOffset int) error {
 		challengeName,
 		displayName,
 	)
-	return c.Send(msg, keyboards.JoinWelcome(challengeID), tele.ModeHTML)
+	animation := &tele.Animation{
+		File:     tele.FromReader(bytes.NewReader(assets.ChallengeAcceptedGIF)),
+		FileName: "challenge-accepted.gif",
+		MIME:     "image/gif",
+		Caption:  msg,
+	}
+	return c.Send(animation, keyboards.JoinWelcome(challengeID), tele.ModeHTML)
 }
