@@ -1,0 +1,177 @@
+package service
+
+import (
+	"errors"
+
+	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
+	"github.com/rgeraskin/squad-challenge-bot/internal/util"
+)
+
+const (
+	MaxChallengesPerUser = 10
+	MaxParticipants      = 10
+)
+
+var (
+	ErrChallengeNotFound    = errors.New("challenge not found")
+	ErrChallengeFull        = errors.New("challenge is full")
+	ErrAlreadyMember        = errors.New("already a member of this challenge")
+	ErrMaxChallengesReached = errors.New("maximum challenges reached")
+	ErrNotAdmin             = errors.New("not an admin of this challenge")
+)
+
+// ChallengeService handles challenge business logic
+type ChallengeService struct {
+	repo repository.Repository
+}
+
+// NewChallengeService creates a new ChallengeService
+func NewChallengeService(repo repository.Repository) *ChallengeService {
+	return &ChallengeService{repo: repo}
+}
+
+// Create creates a new challenge
+func (s *ChallengeService) Create(name, description string, creatorID int64) (*domain.Challenge, error) {
+	// Check max challenges for user
+	challenges, err := s.repo.Challenge().GetByUserID(creatorID)
+	if err != nil {
+		return nil, err
+	}
+	if len(challenges) >= MaxChallengesPerUser {
+		return nil, ErrMaxChallengesReached
+	}
+
+	// Generate unique ID
+	var id string
+	for i := 0; i < 10; i++ {
+		id, err = util.GenerateID()
+		if err != nil {
+			return nil, err
+		}
+		exists, err := s.repo.Challenge().Exists(id)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			break
+		}
+	}
+
+	challenge := &domain.Challenge{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		CreatorID:   creatorID,
+	}
+
+	if err := s.repo.Challenge().Create(challenge); err != nil {
+		return nil, err
+	}
+
+	return challenge, nil
+}
+
+// GetByID retrieves a challenge by ID
+func (s *ChallengeService) GetByID(id string) (*domain.Challenge, error) {
+	challenge, err := s.repo.Challenge().GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if challenge == nil {
+		return nil, ErrChallengeNotFound
+	}
+	return challenge, nil
+}
+
+// GetByUserID retrieves all challenges a user participates in
+func (s *ChallengeService) GetByUserID(telegramID int64) ([]*domain.Challenge, error) {
+	return s.repo.Challenge().GetByUserID(telegramID)
+}
+
+// UpdateName updates a challenge's name
+func (s *ChallengeService) UpdateName(id string, name string, userID int64) error {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if challenge.CreatorID != userID {
+		return ErrNotAdmin
+	}
+
+	challenge.Name = name
+	return s.repo.Challenge().Update(challenge)
+}
+
+// UpdateDescription updates a challenge's description (admin only)
+func (s *ChallengeService) UpdateDescription(id string, description string, userID int64) error {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if challenge.CreatorID != userID {
+		return ErrNotAdmin
+	}
+
+	challenge.Description = description
+	return s.repo.Challenge().Update(challenge)
+}
+
+// Delete deletes a challenge (admin only)
+func (s *ChallengeService) Delete(id string, userID int64) error {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if challenge.CreatorID != userID {
+		return ErrNotAdmin
+	}
+
+	return s.repo.Challenge().Delete(id)
+}
+
+// IsAdmin checks if a user is the admin of a challenge
+func (s *ChallengeService) IsAdmin(challengeID string, userID int64) (bool, error) {
+	challenge, err := s.repo.Challenge().GetByID(challengeID)
+	if err != nil {
+		return false, err
+	}
+	if challenge == nil {
+		return false, nil
+	}
+	return challenge.CreatorID == userID, nil
+}
+
+// CanJoin checks if a user can join a challenge
+func (s *ChallengeService) CanJoin(challengeID string, userID int64) error {
+	challenge, err := s.repo.Challenge().GetByID(challengeID)
+	if err != nil {
+		return err
+	}
+	if challenge == nil {
+		return ErrChallengeNotFound
+	}
+
+	// Check if already a member
+	participant, err := s.repo.Participant().GetByChallengeAndUser(challengeID, userID)
+	if err != nil {
+		return err
+	}
+	if participant != nil {
+		return ErrAlreadyMember
+	}
+
+	// Check participant limit
+	count, err := s.repo.Participant().CountByChallengeID(challengeID)
+	if err != nil {
+		return err
+	}
+	if count >= MaxParticipants {
+		return ErrChallengeFull
+	}
+
+	return nil
+}

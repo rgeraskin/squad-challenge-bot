@@ -1,0 +1,66 @@
+package sqlite
+
+import (
+	"database/sql"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+)
+
+// ChallengeRepo implements ChallengeRepository for SQLite
+type ChallengeRepo struct {
+	db *sqlx.DB
+}
+
+func (r *ChallengeRepo) Create(challenge *domain.Challenge) error {
+	challenge.CreatedAt = time.Now()
+	challenge.UpdatedAt = time.Now()
+
+	_, err := r.db.NamedExec(`
+		INSERT INTO challenges (id, name, description, creator_id, created_at, updated_at)
+		VALUES (:id, :name, :description, :creator_id, :created_at, :updated_at)
+	`, challenge)
+	return err
+}
+
+func (r *ChallengeRepo) GetByID(id string) (*domain.Challenge, error) {
+	var challenge domain.Challenge
+	err := r.db.Get(&challenge, "SELECT * FROM challenges WHERE id = ?", id)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &challenge, err
+}
+
+func (r *ChallengeRepo) GetByUserID(telegramID int64) ([]*domain.Challenge, error) {
+	var challenges []*domain.Challenge
+	err := r.db.Select(&challenges, `
+		SELECT c.* FROM challenges c
+		JOIN participants p ON c.id = p.challenge_id
+		WHERE p.telegram_id = ?
+		ORDER BY c.updated_at DESC
+	`, telegramID)
+	return challenges, err
+}
+
+func (r *ChallengeRepo) Update(challenge *domain.Challenge) error {
+	challenge.UpdatedAt = time.Now()
+	_, err := r.db.NamedExec(`
+		UPDATE challenges
+		SET name = :name, description = :description, updated_at = :updated_at
+		WHERE id = :id
+	`, challenge)
+	return err
+}
+
+func (r *ChallengeRepo) Delete(id string) error {
+	_, err := r.db.Exec("DELETE FROM challenges WHERE id = ?", id)
+	return err
+}
+
+func (r *ChallengeRepo) Exists(id string) (bool, error) {
+	var count int
+	err := r.db.Get(&count, "SELECT COUNT(*) FROM challenges WHERE id = ?", id)
+	return count > 0, err
+}
