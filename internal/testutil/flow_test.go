@@ -15,7 +15,7 @@ func TestFlow_CreateChallengeAndAddTasks(t *testing.T) {
 	creatorID := int64(12345)
 
 	// Step 1: Create challenge
-	challenge, err := f.Challenge.Create("30-Day Fitness", "", creatorID, 0)
+	challenge, err := f.Challenge.Create("30-Day Fitness", "", creatorID, 0, false)
 	if err != nil {
 		t.Fatalf("Create challenge failed: %v", err)
 	}
@@ -352,7 +352,7 @@ func TestFlow_StateManagementDuringFlow(t *testing.T) {
 	f.State.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, tempData)
 
 	// Step 4: Complete flow
-	challenge, _ := f.Challenge.Create("My Challenge", "", userID, 0)
+	challenge, _ := f.Challenge.Create("My Challenge", "", userID, 0, false)
 	f.Participant.Join(challenge.ID, userID, "John", "💪", 0)
 	f.State.SetCurrentChallenge(userID, challenge.ID)
 	f.State.ResetKeepChallenge(userID)

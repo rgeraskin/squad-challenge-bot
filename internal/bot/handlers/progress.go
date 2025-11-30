@@ -76,6 +76,15 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 		return h.sendError(c, "⚠️ Task not found.")
 	}
 
+	// Check if task is hidden (cannot complete hidden tasks)
+	if challenge.HideFutureTasks {
+		tasks, _ := h.task.GetByChallengeID(challengeID)
+		currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
+		if task.OrderNum > currentTaskNum {
+			return c.Send("🔒 This task is locked.\n\nComplete your previous tasks first.", keyboards.BackToMain())
+		}
+	}
+
 	log.Printf("[DEBUG] About to call Complete(taskID=%d, participantID=%d)", taskID, participant.ID)
 	completion, err := h.completion.Complete(taskID, participant.ID)
 	if err != nil {
@@ -214,6 +223,25 @@ func (h *Handler) showTaskDetail(c tele.Context, taskIDStr string) error {
 		return h.sendError(c, "❌ You're not a participant of this challenge.")
 	}
 
+	// Check if task is hidden
+	challenge, err := h.challenge.GetByID(challengeID)
+	if err != nil {
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	tasks, _ := h.task.GetByChallengeID(challengeID)
+	currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
+
+	if challenge.HideFutureTasks && task.OrderNum > currentTaskNum {
+		// Show hidden task view
+		data := views.HiddenTaskDetailData{
+			TaskOrderNum:   task.OrderNum,
+			CurrentTaskNum: currentTaskNum,
+		}
+		text := views.RenderHiddenTaskDetail(data)
+		return c.Send(text, keyboards.HiddenTaskBack())
+	}
+
 	isCompleted, _ := h.completion.IsCompleted(taskID, participant.ID)
 
 	// Get completion status for all participants
@@ -326,14 +354,18 @@ func (h *Handler) showAllTasks(c tele.Context) error {
 		completedSet[id] = true
 	}
 
+	currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
+
 	data := views.AllTasksData{
 		ChallengeName:    challenge.Name,
 		Tasks:            tasks,
 		CompletedTaskIDs: completedSet,
+		HideFutureTasks:  challenge.HideFutureTasks,
+		CurrentTaskNum:   currentTaskNum,
 	}
 
 	text := views.RenderAllTasks(data)
-	return c.Send(text, keyboards.TeamProgress()) // reuse back button
+	return c.Send(text, keyboards.TeamProgress(), tele.ModeHTML) // reuse back button
 }
 
 // showCelebration shows the celebration view

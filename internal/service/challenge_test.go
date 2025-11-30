@@ -35,7 +35,7 @@ func TestChallengeService_Create(t *testing.T) {
 	repo := setupTestRepo(t)
 	svc := NewChallengeService(repo)
 
-	challenge, err := svc.Create("Test Challenge", "", 12345, 0)
+	challenge, err := svc.Create("Test Challenge", "", 12345, 0, false)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -56,7 +56,7 @@ func TestChallengeService_GetByID(t *testing.T) {
 	svc := NewChallengeService(repo)
 
 	// Create challenge
-	created, _ := svc.Create("Test Challenge", "", 12345, 0)
+	created, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
 	// Get by ID
 	got, err := svc.GetByID(created.ID)
@@ -78,7 +78,7 @@ func TestChallengeService_IsAdmin(t *testing.T) {
 	repo := setupTestRepo(t)
 	svc := NewChallengeService(repo)
 
-	challenge, _ := svc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
 	// Creator is admin
 	isAdmin, err := svc.IsAdmin(challenge.ID, 12345)
@@ -106,7 +106,7 @@ func TestChallengeService_MaxChallenges(t *testing.T) {
 
 	// Create 10 challenges (max)
 	for i := 0; i < MaxChallengesPerUser; i++ {
-		challenge, err := challengeSvc.Create("Challenge", "", 12345, 0)
+		challenge, err := challengeSvc.Create("Challenge", "", 12345, 0, false)
 		if err != nil {
 			t.Fatalf("Create() %d error = %v", i, err)
 		}
@@ -115,7 +115,7 @@ func TestChallengeService_MaxChallenges(t *testing.T) {
 	}
 
 	// 11th should fail
-	_, err := challengeSvc.Create("One More", "", 12345, 0)
+	_, err := challengeSvc.Create("One More", "", 12345, 0, false)
 	if err != ErrMaxChallengesReached {
 		t.Errorf("Create() error = %v, want ErrMaxChallengesReached", err)
 	}
@@ -138,10 +138,10 @@ func TestChallengeService_GetByUserID(t *testing.T) {
 	}
 
 	// Create and join challenges
-	ch1, _ := challengeSvc.Create("Challenge 1", "", userID, 0)
+	ch1, _ := challengeSvc.Create("Challenge 1", "", userID, 0, false)
 	participantSvc.Join(ch1.ID, userID, "User", "💪", 0)
 
-	ch2, _ := challengeSvc.Create("Challenge 2", "", userID, 0)
+	ch2, _ := challengeSvc.Create("Challenge 2", "", userID, 0, false)
 	participantSvc.Join(ch2.ID, userID, "User", "🔥", 0)
 
 	challenges, err = challengeSvc.GetByUserID(userID)
@@ -158,7 +158,7 @@ func TestChallengeService_UpdateName(t *testing.T) {
 	svc := NewChallengeService(repo)
 
 	userID := int64(12345)
-	challenge, _ := svc.Create("Original Name", "", userID, 0)
+	challenge, _ := svc.Create("Original Name", "", userID, 0, false)
 
 	err := svc.UpdateName(challenge.ID, "New Name", userID)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestChallengeService_UpdateName_NotAdmin(t *testing.T) {
 	repo := setupTestRepo(t)
 	svc := NewChallengeService(repo)
 
-	challenge, _ := svc.Create("Original Name", "", 12345, 0)
+	challenge, _ := svc.Create("Original Name", "", 12345, 0, false)
 
 	err := svc.UpdateName(challenge.ID, "New Name", 99999)
 	if err != ErrNotAdmin {
@@ -187,7 +187,7 @@ func TestChallengeService_Delete(t *testing.T) {
 	repo := setupTestRepo(t)
 	svc := NewChallengeService(repo)
 
-	challenge, _ := svc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
 	err := svc.Delete(challenge.ID, 12345)
 	if err != nil {
@@ -204,7 +204,7 @@ func TestChallengeService_Delete_NotAdmin(t *testing.T) {
 	repo := setupTestRepo(t)
 	svc := NewChallengeService(repo)
 
-	challenge, _ := svc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
 	err := svc.Delete(challenge.ID, 99999)
 	if err != ErrNotAdmin {
@@ -217,7 +217,7 @@ func TestChallengeService_CanJoin(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	// Should be able to join
 	err := challengeSvc.CanJoin(challenge.ID, 67890)
@@ -238,7 +238,7 @@ func TestChallengeService_CanJoin_Full(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 10000, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 10000, 0, false)
 
 	emojis := []string{"💪", "🔥", "⭐", "🎯", "🏆", "🎨", "🎪", "🎭", "🎮", "🎲"}
 

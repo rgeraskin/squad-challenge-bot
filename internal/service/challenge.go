@@ -32,7 +32,7 @@ func NewChallengeService(repo repository.Repository) *ChallengeService {
 }
 
 // Create creates a new challenge
-func (s *ChallengeService) Create(name, description string, creatorID int64, dailyTaskLimit int) (*domain.Challenge, error) {
+func (s *ChallengeService) Create(name, description string, creatorID int64, dailyTaskLimit int, hideFutureTasks bool) (*domain.Challenge, error) {
 	// Check max challenges for user
 	challenges, err := s.repo.Challenge().GetByUserID(creatorID)
 	if err != nil {
@@ -59,11 +59,12 @@ func (s *ChallengeService) Create(name, description string, creatorID int64, dai
 	}
 
 	challenge := &domain.Challenge{
-		ID:             id,
-		Name:           name,
-		Description:    description,
-		CreatorID:      creatorID,
-		DailyTaskLimit: dailyTaskLimit,
+		ID:              id,
+		Name:            name,
+		Description:     description,
+		CreatorID:       creatorID,
+		DailyTaskLimit:  dailyTaskLimit,
+		HideFutureTasks: hideFutureTasks,
 	}
 
 	if err := s.repo.Challenge().Create(challenge); err != nil {
@@ -132,6 +133,36 @@ func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64) 
 	}
 
 	return s.repo.Challenge().UpdateDailyLimit(id, limit)
+}
+
+// UpdateHideFutureTasks updates the hide future tasks setting (admin only)
+func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID int64) error {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+
+	if challenge.CreatorID != userID {
+		return ErrNotAdmin
+	}
+
+	return s.repo.Challenge().UpdateHideFutureTasks(id, hide)
+}
+
+// ToggleHideFutureTasks toggles the hide future tasks setting and returns new value (admin only)
+func (s *ChallengeService) ToggleHideFutureTasks(id string, userID int64) (bool, error) {
+	challenge, err := s.GetByID(id)
+	if err != nil {
+		return false, err
+	}
+
+	if challenge.CreatorID != userID {
+		return false, ErrNotAdmin
+	}
+
+	newValue := !challenge.HideFutureTasks
+	err = s.repo.Challenge().UpdateHideFutureTasks(id, newValue)
+	return newValue, err
 }
 
 // Delete deletes a challenge (admin only)

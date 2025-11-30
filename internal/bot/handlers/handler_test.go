@@ -204,7 +204,11 @@ func TestHandleText_CompleteChallengeCreation(t *testing.T) {
 	ctx = testutil.NewMockContext(userID).WithMessage("5")
 	h.HandleText(ctx)
 
-	// Step 6: Creator sync time (14:30)
+	// Step 6: Hide future tasks (select "no")
+	ctx = testutil.NewMockContext(userID).WithCallback("hide_future_no")
+	h.HandleCallback(ctx)
+
+	// Step 7: Creator sync time (14:30)
 	ctx = testutil.NewMockContext(userID).WithMessage("14:30")
 	err := h.HandleText(ctx)
 	if err != nil {
@@ -294,7 +298,7 @@ func TestHandleText_TaskCreationFlow(t *testing.T) {
 	userID := int64(12345)
 
 	// First create a challenge and participant
-	challenge, _ := h.challenge.Create("Test", "", userID, 0)
+	challenge, _ := h.challenge.Create("Test", "", userID, 0, false)
 	h.participant.Join(challenge.ID, userID, "Test", "💪", 0)
 	h.state.SetCurrentChallenge(userID, challenge.ID)
 

@@ -33,8 +33,13 @@ func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 	} else {
 		msg += "Daily limit: unlimited\n"
 	}
+	if challenge.HideFutureTasks {
+		msg += "Task visibility: Sequential\n"
+	} else {
+		msg += "Task visibility: All visible\n"
+	}
 
-	return c.Send(msg, keyboards.AdminPanel(challenge.DailyTaskLimit))
+	return c.Send(msg, keyboards.AdminPanel(challenge.DailyTaskLimit, challenge.HideFutureTasks))
 }
 
 // handleEditChallengeName starts editing challenge name
@@ -140,6 +145,26 @@ func (h *Handler) processNewDailyLimit(c tele.Context, input string) error {
 		c.Send(fmt.Sprintf("✅ Daily limit set to %d tasks/day", limit))
 	} else {
 		c.Send("✅ Daily limit removed (unlimited)")
+	}
+	return h.showAdminPanel(c, challengeID)
+}
+
+// handleToggleHideFutureTasks toggles the hide future tasks setting
+func (h *Handler) handleToggleHideFutureTasks(c tele.Context) error {
+	userID := c.Sender().ID
+
+	userState, _ := h.state.Get(userID)
+	challengeID := userState.CurrentChallenge
+
+	newValue, err := h.challenge.ToggleHideFutureTasks(challengeID, userID)
+	if err != nil {
+		return h.sendError(c, "⚠️ Something went wrong. Please try again.")
+	}
+
+	if newValue {
+		c.Send("✅ Task visibility set to Sequential (future tasks hidden)")
+	} else {
+		c.Send("✅ Task visibility set to All Visible")
 	}
 	return h.showAdminPanel(c, challengeID)
 }

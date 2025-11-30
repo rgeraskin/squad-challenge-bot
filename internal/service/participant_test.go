@@ -20,7 +20,7 @@ func TestParticipantService_Join(t *testing.T) {
 	participantSvc := NewParticipantService(repo)
 
 	// Create a challenge first
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	// Join challenge
 	participant, err := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
@@ -48,7 +48,7 @@ func TestParticipantService_Join_EmptyName(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	_, err := participantSvc.Join(challenge.ID, 12345, "", "💪", 0)
 	if err != ErrEmptyName {
@@ -66,7 +66,7 @@ func TestParticipantService_Join_NameTooLong(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	longName := strings.Repeat("a", 31)
 	_, err := participantSvc.Join(challenge.ID, 12345, longName, "💪", 0)
@@ -85,7 +85,7 @@ func TestParticipantService_Join_EmojiTaken(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	// First participant takes the emoji
 	participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
@@ -107,7 +107,7 @@ func TestParticipantService_GetByID(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	created, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	participant, err := participantSvc.GetByID(created.ID)
@@ -144,7 +144,7 @@ func TestParticipantService_UpdateName(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	err := participantSvc.UpdateName(participant.ID, "Johnny")
@@ -168,7 +168,7 @@ func TestParticipantService_UpdateName_Empty(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	err := participantSvc.UpdateName(participant.ID, "")
@@ -187,7 +187,7 @@ func TestParticipantService_UpdateEmoji(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	err := participantSvc.UpdateEmoji(participant.ID, "🔥", challenge.ID)
@@ -211,7 +211,7 @@ func TestParticipantService_UpdateEmoji_Taken(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 	participant2, _ := participantSvc.Join(challenge.ID, 67890, "Jane", "🔥", 0)
 
@@ -231,7 +231,7 @@ func TestParticipantService_ToggleNotifications(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	// Initially enabled
@@ -268,7 +268,7 @@ func TestParticipantService_Leave(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	err := participantSvc.Leave(participant.ID)
@@ -292,7 +292,7 @@ func TestParticipantService_CountByChallengeID(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	count, _ := participantSvc.CountByChallengeID(challenge.ID)
 	if count != 0 {
@@ -318,7 +318,7 @@ func TestParticipantService_GetUsedEmojis(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 	participantSvc.Join(challenge.ID, 67890, "Jane", "🔥", 0)
@@ -342,7 +342,7 @@ func TestParticipantService_GetByChallengeID(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 	participantSvc.Join(challenge.ID, 67890, "Jane", "🔥", 0)
@@ -366,7 +366,7 @@ func TestParticipantService_GetByChallengeAndUser(t *testing.T) {
 	challengeSvc := NewChallengeService(repo)
 	participantSvc := NewParticipantService(repo)
 
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	participantSvc.Join(challenge.ID, 12345, "John", "💪", 0)
 
 	// Find existing

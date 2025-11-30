@@ -54,8 +54,8 @@ func NewFlowRunner(t *testing.T) *FlowRunner {
 
 // CreateChallengeWithTasks creates a challenge with the specified number of tasks
 func (f *FlowRunner) CreateChallengeWithTasks(creatorID int64, challengeName string, numTasks int) string {
-	// Create challenge (0 = unlimited daily tasks)
-	challenge, err := f.Challenge.Create(challengeName, "", creatorID, 0)
+	// Create challenge (0 = unlimited daily tasks, false = don't hide future tasks)
+	challenge, err := f.Challenge.Create(challengeName, "", creatorID, 0, false)
 	if err != nil {
 		f.T.Fatalf("Failed to create challenge: %v", err)
 	}

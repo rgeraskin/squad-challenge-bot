@@ -74,6 +74,7 @@ func (h *Handler) showMainChallengeView(c tele.Context, challengeID string) erro
 		ParticipantEmojis:    participantEmojis,
 		CurrentUserEmoji:     participant.Emoji,
 		CurrentTaskNum:       currentTaskNum,
+		HideFutureTasks:      challenge.HideFutureTasks,
 	}
 
 	text := views.RenderTaskList(data)
@@ -103,7 +104,7 @@ func (h *Handler) showMainChallengeView(c tele.Context, challengeID string) erro
 
 	kb := keyboards.MainChallengeView(challengeID, currentTaskNum, isAdmin, taskButtons)
 
-	return c.Send(text, kb)
+	return c.Send(text, kb, tele.ModeHTML)
 }
 
 // handleCreateChallenge starts the challenge creation flow
@@ -235,9 +236,9 @@ func (h *Handler) processDailyLimit(c tele.Context, input string) error {
 	var tempData map[string]interface{}
 	h.state.GetTempData(userID, &tempData)
 	tempData["daily_limit"] = limit
-	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorSyncTime, tempData)
+	h.state.SetStateWithData(userID, domain.StateAwaitingHideFutureTasks, tempData)
 
-	return h.promptSyncTime(c, true)
+	return h.askHideFutureTasks(c)
 }
 
 // skipDailyLimit skips the daily limit step (sets to unlimited)
@@ -247,6 +248,32 @@ func (h *Handler) skipDailyLimit(c tele.Context) error {
 	var tempData map[string]interface{}
 	h.state.GetTempData(userID, &tempData)
 	tempData["daily_limit"] = 0
+	h.state.SetStateWithData(userID, domain.StateAwaitingHideFutureTasks, tempData)
+
+	return h.askHideFutureTasks(c)
+}
+
+// askHideFutureTasks shows the hide future tasks choice
+func (h *Handler) askHideFutureTasks(c tele.Context) error {
+	msg := `👁 Hide Future Tasks
+
+Do you want to hide task names until participants reach them?
+
+When enabled:
+• Participants only see names of completed tasks and their current task
+• Future tasks show "🔒 Complete previous tasks to unlock"
+• Each participant sees based on their own progress`
+
+	return c.Send(msg, keyboards.HideFutureTasksChoice())
+}
+
+// processHideFutureTasks processes hide future tasks selection during creation
+func (h *Handler) processHideFutureTasks(c tele.Context, hide bool) error {
+	userID := c.Sender().ID
+
+	var tempData map[string]interface{}
+	h.state.GetTempData(userID, &tempData)
+	tempData["hide_future_tasks"] = hide
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorSyncTime, tempData)
 
 	return h.promptSyncTime(c, true)
@@ -327,9 +354,13 @@ func (h *Handler) finishChallengeCreation(c tele.Context, timeOffset int) error 
 	if limit, ok := tempData["daily_limit"].(int); ok {
 		dailyLimit = limit
 	}
+	hideFutureTasks := false
+	if hide, ok := tempData["hide_future_tasks"].(bool); ok {
+		hideFutureTasks = hide
+	}
 
 	// Create challenge
-	challenge, err := h.challenge.Create(challengeName, challengeDescription, userID, dailyLimit)
+	challenge, err := h.challenge.Create(challengeName, challengeDescription, userID, dailyLimit, hideFutureTasks)
 	if err != nil {
 		h.state.Reset(userID)
 		if err == service.ErrMaxChallengesReached {

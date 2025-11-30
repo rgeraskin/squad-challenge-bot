@@ -228,7 +228,7 @@ func NewCopyTextKeyboard(challengeID, link string) *CopyTextKeyboard {
 }
 
 // AdminPanel creates the admin panel keyboard
-func AdminPanel(dailyLimit int) *tele.ReplyMarkup {
+func AdminPanel(dailyLimit int, hideFutureTasks bool) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 
 	addTaskBtn := menu.Data("➕ Add Task", "add_task")
@@ -245,13 +245,22 @@ func AdminPanel(dailyLimit int) *tele.ReplyMarkup {
 	}
 	limitBtn := menu.Data(limitText, "edit_daily_limit")
 
+	// Hide future tasks button
+	var hideText string
+	if hideFutureTasks {
+		hideText = "👁 Tasks: Sequential"
+	} else {
+		hideText = "👁 Tasks: All Visible"
+	}
+	hideBtn := menu.Data(hideText, "toggle_hide_future")
+
 	deleteBtn := menu.Data("🗑 Delete Challenge", "delete_challenge")
 	mainBtn := menu.Data("🏠 Main Menu", "back_to_main")
 
 	menu.Inline(
 		menu.Row(addTaskBtn, editTasksBtn),
 		menu.Row(editNameBtn, editDescBtn),
-		menu.Row(limitBtn),
+		menu.Row(limitBtn, hideBtn),
 		menu.Row(deleteBtn, mainBtn),
 	)
 	return menu
@@ -469,5 +478,22 @@ func SkipSyncTime(isCreator bool) *tele.ReplyMarkup {
 	skipBtn := menu.Data("⏭ Skip (use server time)", skipAction)
 	cancelBtn := menu.Data("❌ Cancel", "cancel")
 	menu.Inline(menu.Row(skipBtn, cancelBtn))
+	return menu
+}
+
+// HideFutureTasksChoice creates the keyboard for hide future tasks choice during challenge creation
+func HideFutureTasksChoice() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	yesBtn := menu.Data("✅ Yes, hide", "hide_future_yes")
+	noBtn := menu.Data("❌ No, show all", "hide_future_no")
+	menu.Inline(menu.Row(yesBtn, noBtn))
+	return menu
+}
+
+// HiddenTaskBack creates a keyboard with just a back button for hidden task detail view
+func HiddenTaskBack() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back", "back_to_main")
+	menu.Inline(menu.Row(backBtn))
 	return menu
 }

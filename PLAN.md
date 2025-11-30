@@ -1,21 +1,19 @@
-# Implementation Plan: Daily Task Limit & Time Sync
+# Implementation Plan: Hide Future Tasks
 
 ## Overview
-Add ability to limit tasks completed per day per user, with time synchronization to handle different timezones.
+Add a "Hide Future Tasks" setting that hides task names for tasks beyond the participant's current task. Each participant sees tasks based on their own progress. Hidden tasks show a spoiler placeholder and cannot be completed until previous tasks are done.
 
 ---
 
 ## 1. Database Migration
 
-**File**: `internal/repository/sqlite/migrations/003_daily_limit.sql`
+**File**: `internal/repository/sqlite/migrations/004_hide_future_tasks.sql`
 
 ```sql
-ALTER TABLE challenges ADD COLUMN daily_task_limit INTEGER DEFAULT 0;
-ALTER TABLE participants ADD COLUMN time_offset_minutes INTEGER DEFAULT 0;
+ALTER TABLE challenges ADD COLUMN hide_future_tasks INTEGER DEFAULT 0;
 ```
 
-- `daily_task_limit`: 0 = unlimited, >0 = max completions per day
-- `time_offset_minutes`: offset from server time in minutes (can be negative)
+- `hide_future_tasks`: 0 = show all task names, 1 = hide tasks after current
 
 **Update**: `internal/repository/sqlite/db.go` - add migration to list
 
@@ -24,56 +22,38 @@ ALTER TABLE participants ADD COLUMN time_offset_minutes INTEGER DEFAULT 0;
 ## 2. Domain Changes
 
 **File**: `internal/domain/challenge.go`
-- Add `DailyTaskLimit int` field
-
-**File**: `internal/domain/participant.go`
-- Add `TimeOffsetMinutes int` field
+- Add `HideFutureTasks bool` field
 
 ---
 
-## 3. New States
+## 3. New State
 
 **File**: `internal/domain/state.go`
 
 Add:
-- `StateAwaitingDailyLimit` - challenge creation flow
-- `StateAwaitingCreatorSyncTime` - creator time sync during challenge creation
-- `StateAwaitingNewDailyLimit` - admin editing daily limit
-- `StateAwaitingSyncTime` - user joining + settings re-sync
+- `StateAwaitingHideFutureTasks` - challenge creation flow (after daily limit)
+- `StateAwaitingNewHideFutureTasks` - admin toggling setting (if needed, or just use callback)
 
 ---
 
 ## 4. Repository Changes
 
 **File**: `internal/repository/sqlite/challenge.go`
-- Update `Create()` to include `daily_task_limit`
-- Update `GetByID()` to read `daily_task_limit`
-- Add `UpdateDailyLimit(challengeID string, limit int) error`
+- Update `Create()` to include `hide_future_tasks`
+- Update `GetByID()` to read `hide_future_tasks`
+- Add `UpdateHideFutureTasks(challengeID string, hide bool) error`
 
-**File**: `internal/repository/sqlite/participant.go`
-- Update `Create()` to include `time_offset_minutes`
-- Update queries to read `time_offset_minutes`
-- Add `UpdateTimeOffset(participantID int64, offsetMinutes int) error`
-
-**File**: `internal/repository/sqlite/completion.go`
-- Add `CountCompletionsInRange(participantID int64, from, to time.Time) (int, error)`
+**File**: `internal/repository/interfaces.go`
+- Update `ChallengeRepository` interface with new method
 
 ---
 
 ## 5. Service Changes
 
 **File**: `internal/service/challenge.go`
-- Update `Create()` signature to accept `dailyLimit int`
-- Add `UpdateDailyLimit(challengeID string, limit int) error`
-
-**File**: `internal/service/participant.go`
-- Update `Join()` signature to accept `timeOffsetMinutes int`
-- Add `UpdateTimeOffset(participantID int64, offsetMinutes int) error`
-
-**File**: `internal/service/completion.go`
-- Add `GetCompletionsToday(participant *domain.Participant) (int, error)`
-- Add `CanCompleteTask(participant *domain.Participant, challenge *domain.Challenge) (allowed bool, completed int, limit int, timeToReset time.Duration, err error)`
-- Add helper `getUserDayBoundaries(offsetMinutes int) (start, end time.Time)`
+- Update `Create()` signature to accept `hideFutureTasks bool`
+- Add `UpdateHideFutureTasks(challengeID string, hide bool) error`
+- Add `ToggleHideFutureTasks(challengeID string) (newValue bool, err error)` - toggle and return new state
 
 ---
 
@@ -85,73 +65,43 @@ Add:
 1. `StateAwaitingChallengeName`
 2. `StateAwaitingChallengeDescription` (skippable)
 3. `StateAwaitingCreatorName`
-4. `StateAwaitingCreatorEmoji` → creates challenge
+4. `StateAwaitingCreatorEmoji`
+5. `StateAwaitingDailyLimit` (skippable)
+6. `StateAwaitingCreatorSyncTime` (skippable) → creates challenge
 
 ### New flow:
 1. `StateAwaitingChallengeName`
 2. `StateAwaitingChallengeDescription` (skippable)
 3. `StateAwaitingCreatorName`
-4. `StateAwaitingCreatorEmoji` → transitions to daily limit
-5. `StateAwaitingDailyLimit` (skippable) → transitions to time sync
-6. `StateAwaitingCreatorSyncTime` (skippable) → creates challenge
+4. `StateAwaitingCreatorEmoji`
+5. `StateAwaitingDailyLimit` (skippable)
+6. **`StateAwaitingHideFutureTasks`** (Yes/No buttons) ← NEW
+7. `StateAwaitingCreatorSyncTime` (skippable) → creates challenge
 
 ### Changes:
-- Modify `processCreatorEmoji()`: don't create challenge, store emoji in temp data, transition to `StateAwaitingDailyLimit`
-- Add `processDailyLimit()`: validate input (1-50), store in temp data, transition to `StateAwaitingCreatorSyncTime`
-- Add `skipDailyLimit()`: store limit=0 in temp data, transition to `StateAwaitingCreatorSyncTime`
-- Add `processCreatorSyncTime()`: validate HH:MM, calculate offset, create challenge with all temp data
-- Add `skipCreatorSyncTime()`: create challenge with offset=0
+- Modify `processDailyLimit()` and `skipDailyLimit()`: transition to `StateAwaitingHideFutureTasks` instead of `StateAwaitingCreatorSyncTime`
+- Add `processHideFutureTasks(hide bool)`: store in temp data, transition to `StateAwaitingCreatorSyncTime`
+- Update `finishChallengeCreation()`: pass `hideFutureTasks` to service
 
-### UI for daily limit prompt:
+### UI for hide future tasks prompt:
 ```
-⏱ Daily Task Limit
+👁 Hide Future Tasks
 
-How many tasks can each participant complete per day?
+Do you want to hide task names until participants reach them?
 
-Enter a number (1-50) or tap Skip for unlimited.
+When enabled:
+• Participants only see names of completed tasks and their current task
+• Future tasks show "🔒 Complete previous tasks to unlock"
+• Each participant sees based on their own progress
 ```
 
-**Keyboard**: Skip button
+**Keyboard**: `HideFutureTasksChoice()` - two buttons in a row:
+- "✅ Yes, hide" → callback `hide_future_yes`
+- "❌ No, show all" → callback `hide_future_no`
 
 ---
 
-## 7. Join Challenge Flow Changes
-
-**File**: `internal/bot/handlers/join.go`
-
-### Current flow:
-1. `StateAwaitingChallengeID` (or deep link)
-2. `StateAwaitingParticipantName`
-3. `StateAwaitingParticipantEmoji` → joins challenge
-
-### New flow:
-1. `StateAwaitingChallengeID` (or deep link)
-2. `StateAwaitingParticipantName`
-3. `StateAwaitingParticipantEmoji` → transitions to time sync
-4. `StateAwaitingSyncTime` (skippable) → joins challenge
-
-### Changes:
-- Modify `processParticipantEmoji()`: don't join, store emoji in temp data, transition to `StateAwaitingSyncTime`
-- Add `processSyncTime()`: validate HH:MM format, calculate offset, join challenge
-- Add `skipSyncTime()`: join with offset=0
-
-### UI for time sync prompt:
-```
-🕐 Synchronize Your Clock
-
-Please enter your current time in 24-hour format (HH:MM).
-Example: 14:30 or 09:15
-
-This helps us track your daily progress correctly.
-
-Current server time: HH:MM
-```
-
-**Keyboard**: Skip button with note "(will use server time)"
-
----
-
-## 8. Admin Panel Changes
+## 7. Admin Panel Changes
 
 **File**: `internal/bot/keyboards/inline.go`
 
@@ -159,101 +109,141 @@ Current server time: HH:MM
 ```
 Row 1: "➕ Add Task" | "📋 Edit Tasks"
 Row 2: "✏️ Name" | "📝 Description"
-Row 3: "🗑 Delete Challenge" | "🏠 Main Menu"
-```
-
-### New layout:
-```
-Row 1: "➕ Add Task" | "📋 Edit Tasks"
-Row 2: "✏️ Name" | "📝 Description"
-Row 3: "⏱ Daily Limit: X" or "⏱ Daily Limit: ∞"
+Row 3: "⏱ Daily Limit: X"
 Row 4: "🗑 Delete Challenge" | "🏠 Main Menu"
 ```
 
-**File**: `internal/bot/handlers/admin.go`
-- Update `showAdminPanel()` to show daily limit in info text
-- Add `handleEditDailyLimit()`: show prompt, set `StateAwaitingNewDailyLimit`
-- Add `processNewDailyLimit()`: validate, update, show admin panel
-
-### UI for editing:
-```
-⏱ Edit Daily Limit
-
-Current limit: X tasks/day (or "unlimited")
-
-Enter a new limit (1-50) or 0 for unlimited.
-```
-
-**Keyboard**: Cancel button
-
----
-
-## 9. User Settings Changes
-
-**File**: `internal/bot/keyboards/inline.go`
-
-### Current layout:
-```
-Row 1: "🔔 Notifications: ON/OFF"
-Row 2: "✏️ Change Name" | "😀 Change Emoji"
-Row 3: "🔗 Share the Challenge"
-Row 4: "🚫 Leave" | "⬅️ Back" (non-admin) or just "⬅️ Back" (admin)
-```
-
 ### New layout:
 ```
-Row 1: "🔔 Notifications: ON/OFF"
-Row 2: "✏️ Change Name" | "😀 Change Emoji"
-Row 3: "🕐 Sync Time" | "🔗 Share the Challenge"
-Row 4: "🚫 Leave" | "⬅️ Back" (non-admin) or just "⬅️ Back" (admin)
+Row 1: "➕ Add Task" | "📋 Edit Tasks"
+Row 2: "✏️ Name" | "📝 Description"
+Row 3: "⏱ Daily Limit: X" | "👁 Tasks: Sequential" (or "👁 Tasks: All Visible")
+Row 4: "🗑 Delete Challenge" | "🏠 Main Menu"
 ```
 
-**File**: `internal/bot/handlers/settings.go`
-- Update `showSettings()` to display user's synced time: `🕐 Your time: HH:MM`
-- Add `handleSyncTime()`: show prompt, set `StateAwaitingSyncTime`
+### Update `AdminPanel()` function:
+- Accept additional parameter: `hideFutureTasks bool`
+- Create button text based on state:
+  - If `hideFutureTasks`: `"👁 Tasks: Sequential"`
+  - If not: `"👁 Tasks: All Visible"`
+- Button callback: `toggle_hide_future`
+- Place in same row as daily limit button (Row 3)
+
+**File**: `internal/bot/handlers/admin.go`
+- Update `showAdminPanel()` to pass `challenge.HideFutureTasks` to keyboard
+- Add `handleToggleHideFutureTasks()`: toggle setting, refresh admin panel
 
 ---
 
-## 10. Task Completion Enforcement
+## 8. Task List View Changes
+
+**File**: `internal/bot/views/tasklist.go`
+
+### Update `TaskListData` struct:
+```go
+type TaskListData struct {
+    // ... existing fields ...
+    HideFutureTasks bool  // NEW: challenge setting
+    CurrentTaskNum  int   // Already exists: participant's current task number
+}
+```
+
+### Update `RenderTaskList()` function:
+
+When rendering each task in the window:
+1. Determine if task should be hidden:
+   - `isHidden := data.HideFutureTasks && task.OrderNum > data.CurrentTaskNum`
+2. If hidden, render as:
+   ```
+   ⬜ Task X: <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>
+   ```
+3. If not hidden, render normally with task title
+
+### Example output (participant on task 3, setting enabled):
+```
+📋 Challenge Name
+
+✅ Task 1: Morning stretch
+✅ Task 2: Drink water
+⬜ Task 3: Read 10 pages        ← current task (visible)
+⬜ Task 4: <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>
+⬜ Task 5: <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>
+
+Progress: 2/10 tasks
+```
+
+---
+
+## 9. Task Detail View Changes
+
+**File**: `internal/bot/views/taskdetail.go`
+
+### Update `TaskDetailData` struct:
+```go
+type TaskDetailData struct {
+    // ... existing fields ...
+    IsHidden bool  // NEW: whether this task is hidden for the viewer
+}
+```
+
+### Update `RenderTaskDetail()` function:
+
+If `data.IsHidden`:
+```
+🔒 Task X: Hidden
+
+This task is not yet unlocked.
+
+Complete your previous tasks first to reveal this task's details.
+
+Your current task: Task Y
+```
+
+If not hidden, render normally.
+
+**File**: `internal/bot/handlers/task.go`
+
+### Update `handleViewTask()`:
+1. Get participant's current task number
+2. Get challenge's `HideFutureTasks` setting
+3. Calculate if task is hidden: `isHidden := challenge.HideFutureTasks && task.OrderNum > currentTaskNum`
+4. Pass `IsHidden` to view data
+5. Show back button regardless
+
+---
+
+## 10. Task Completion Changes
 
 **File**: `internal/bot/handlers/progress.go`
 
-### Modify `handleCompleteTask()` and `handleCompleteCurrent()`:
+### Update `handleCompleteTask()` and `handleCompleteCurrent()`:
 
-Before completing:
-1. Get challenge and check if `DailyTaskLimit > 0`
-2. If limited, call `CanCompleteTask()`
-3. If not allowed, show limit reached message and return
-4. If allowed, proceed with completion
-
-### Limit reached message:
-```
-⏱ Daily Limit Reached
-
-You've completed X/X tasks today.
-
-New day starts in: HH:MM:SS
-
-Come back tomorrow to continue!
+Before completing, add check:
+```go
+// Check if task is hidden (cannot complete hidden tasks)
+if challenge.HideFutureTasks {
+    currentTaskNum, _ := h.completion.GetCurrentTaskNum(participant.ID, challengeID)
+    if task.OrderNum > currentTaskNum {
+        // Task is hidden, cannot complete
+        return c.Send("🔒 This task is locked.\n\nComplete your previous tasks first.")
+    }
+}
 ```
 
-**Keyboard**: "⬅️ Back" button
-
-### After successful completion (if daily limit set):
-Show feedback: `✅ Task completed! (X/Y today, resets in HH:MM)`
+This ensures participants cannot complete tasks out of order when the setting is enabled.
 
 ---
 
-## 11. Main View Changes (Optional Enhancement)
+## 11. Callback Handler Updates
 
-**File**: `internal/bot/handlers/main.go` or wherever main view is rendered
+**File**: `internal/bot/handlers/callbacks.go`
 
-If challenge has daily limit > 0, add to the view text:
-```
-📅 Today: X/Y completed (Resets in HH:MM)
-```
+Add new actions:
+- `hide_future_yes` → `processHideFutureTasks(true)` (creation flow)
+- `hide_future_no` → `processHideFutureTasks(false)` (creation flow)
+- `toggle_hide_future` → `handleToggleHideFutureTasks()` (admin panel)
 
-Only show this line if daily limit is set (not unlimited).
+Add `toggle_hide_future` to `adminActions` map.
 
 ---
 
@@ -261,56 +251,88 @@ Only show this line if daily limit is set (not unlimited).
 
 **File**: `internal/bot/handlers/text.go`
 
-Add cases for new states:
-- `StateAwaitingDailyLimit` → `processDailyLimit()`
-- `StateAwaitingCreatorSyncTime` → `processCreatorSyncTime()`
-- `StateAwaitingNewDailyLimit` → `processNewDailyLimit()`
-- `StateAwaitingSyncTime` → `processSyncTime()`
+No changes needed - this feature uses callback buttons, not text input.
 
 ---
 
-## 13. Callback Handler Updates
+## 13. New Keyboard Function
 
-**File**: `internal/bot/handlers/callbacks.go`
-
-Add new actions:
-- `edit_daily_limit` → `handleEditDailyLimit()`
-- `sync_time` → `handleSyncTime()`
-- `skip_daily_limit` → `skipDailyLimit()`
-- `skip_creator_sync_time` → `skipCreatorSyncTime()`
-- `skip_sync_time` → `skipSyncTime()`
-
----
-
-## 14. Validation Functions
-
-**File**: `internal/util/validation.go` (or new file)
-
-- `ParseTime(input string) (hours, minutes int, err error)` - validates HH:MM format
-- `CalculateTimeOffset(userHours, userMinutes int) int` - returns offset in minutes
-- `ValidateDailyLimit(input string) (int, error)` - validates 1-50 or 0
-
----
-
-## 15. Time Calculation Helpers
-
-**File**: `internal/service/completion.go` or `internal/util/time.go`
+**File**: `internal/bot/keyboards/inline.go`
 
 ```go
-// GetUserLocalTime returns current time adjusted by user's offset
-func GetUserLocalTime(offsetMinutes int) time.Time
+// HideFutureTasksChoice returns keyboard for hide future tasks selection
+func HideFutureTasksChoice() *tele.ReplyMarkup {
+    menu := &tele.ReplyMarkup{}
 
-// GetUserDayStart returns start of user's current day (midnight)
-func GetUserDayStart(offsetMinutes int) time.Time
+    yesBtn := menu.Data("✅ Yes, hide", "hide_future_yes")
+    noBtn := menu.Data("❌ No, show all", "hide_future_no")
 
-// GetUserDayEnd returns end of user's current day
-func GetUserDayEnd(offsetMinutes int) time.Time
+    menu.Inline(
+        menu.Row(yesBtn, noBtn),
+    )
+    return menu
+}
+```
 
-// TimeUntilUserMidnight returns duration until user's next day
-func TimeUntilUserMidnight(offsetMinutes int) time.Duration
+---
 
-// FormatDuration formats duration as "HH:MM:SS" or "HH:MM"
-func FormatDuration(d time.Duration) string
+## 14. Handler Updates for Creation Flow
+
+**File**: `internal/bot/handlers/challenge.go`
+
+### Add `askHideFutureTasks()`:
+```go
+func (h *Handler) askHideFutureTasks(c tele.Context) error {
+    h.state.SetState(c.Sender().ID, domain.StateAwaitingHideFutureTasks)
+
+    text := `👁 Hide Future Tasks
+
+Do you want to hide task names until participants reach them?
+
+When enabled:
+• Participants only see names of completed tasks and their current task
+• Future tasks show "🔒 Complete previous tasks to unlock"
+• Each participant sees based on their own progress`
+
+    return c.Send(text, keyboards.HideFutureTasksChoice())
+}
+```
+
+### Add `processHideFutureTasks(hide bool)`:
+```go
+func (h *Handler) processHideFutureTasks(c tele.Context, hide bool) error {
+    userID := c.Sender().ID
+
+    // Store in temp data
+    tempData, _ := h.state.GetTempData(userID)
+    if tempData == nil {
+        tempData = make(map[string]string)
+    }
+    if hide {
+        tempData["hide_future_tasks"] = "1"
+    } else {
+        tempData["hide_future_tasks"] = "0"
+    }
+    h.state.SetStateWithData(userID, domain.StateAwaitingCreatorSyncTime, tempData)
+
+    // Proceed to time sync
+    return h.askCreatorSyncTime(c)
+}
+```
+
+### Modify `processDailyLimit()`:
+Change transition from `StateAwaitingCreatorSyncTime` to calling `askHideFutureTasks()`
+
+### Modify `skipDailyLimit()`:
+Change transition from `StateAwaitingCreatorSyncTime` to calling `askHideFutureTasks()`
+
+### Modify `finishChallengeCreation()`:
+```go
+// Parse hide future tasks setting
+hideFutureTasks := tempData["hide_future_tasks"] == "1"
+
+// Update Create call
+challenge, err := h.challenge.Create(name, description, creatorID, dailyLimit, hideFutureTasks)
 ```
 
 ---
@@ -319,50 +341,43 @@ func FormatDuration(d time.Duration) string
 
 | File | Changes |
 |------|---------|
-| `migrations/003_daily_limit.sql` | NEW - add columns |
+| `migrations/004_hide_future_tasks.sql` | NEW - add column |
 | `repository/sqlite/db.go` | Add migration to list |
-| `domain/challenge.go` | Add DailyTaskLimit field |
-| `domain/participant.go` | Add TimeOffsetMinutes field |
-| `domain/state.go` | Add 4 new states |
-| `repository/sqlite/challenge.go` | Update Create, GetByID, add UpdateDailyLimit |
-| `repository/sqlite/participant.go` | Update Create, queries, add UpdateTimeOffset |
-| `repository/sqlite/completion.go` | Add CountCompletionsInRange |
-| `repository/interfaces.go` | Update interfaces |
-| `service/challenge.go` | Update Create, add UpdateDailyLimit |
-| `service/participant.go` | Update Join, add UpdateTimeOffset |
-| `service/completion.go` | Add daily limit checking functions |
-| `handlers/challenge.go` | Modify emoji handler, add daily limit + creator sync handlers |
-| `handlers/join.go` | Modify emoji handler, add sync time handlers |
-| `handlers/admin.go` | Update panel, add daily limit editing |
-| `handlers/settings.go` | Update view, add sync time button handler |
-| `handlers/progress.go` | Add daily limit enforcement |
-| `handlers/main.go` | Add daily progress to main view |
-| `handlers/text.go` | Add state routing |
-| `handlers/callbacks.go` | Add new actions |
-| `keyboards/inline.go` | Update AdminPanel, Settings, add Skip keyboards |
-| `util/validation.go` | Add time/limit validation (or existing util file) |
+| `domain/challenge.go` | Add HideFutureTasks field |
+| `domain/state.go` | Add StateAwaitingHideFutureTasks |
+| `repository/sqlite/challenge.go` | Update Create, GetByID, add UpdateHideFutureTasks |
+| `repository/interfaces.go` | Update ChallengeRepository interface |
+| `service/challenge.go` | Update Create signature, add UpdateHideFutureTasks, ToggleHideFutureTasks |
+| `handlers/challenge.go` | Add askHideFutureTasks, processHideFutureTasks, modify flow |
+| `handlers/admin.go` | Update showAdminPanel, add handleToggleHideFutureTasks |
+| `handlers/task.go` | Update handleViewTask for hidden task check |
+| `handlers/progress.go` | Add hidden task completion check |
+| `handlers/callbacks.go` | Add hide_future_yes, hide_future_no, toggle_hide_future actions |
+| `keyboards/inline.go` | Update AdminPanel, add HideFutureTasksChoice |
+| `views/tasklist.go` | Update TaskListData, RenderTaskList for hidden tasks |
+| `views/taskdetail.go` | Update TaskDetailData, RenderTaskDetail for hidden tasks |
 
 ---
 
 ## Testing Plan
 
 1. **Unit tests** for new service functions:
-   - `GetCompletionsToday()`
-   - `CanCompleteTask()`
-   - Time calculation helpers
+   - `UpdateHideFutureTasks()`
+   - `ToggleHideFutureTasks()`
 
 2. **Flow tests** for:
-   - Challenge creation with daily limit
-   - Challenge creation skipping daily limit
-   - Join with time sync
-   - Join skipping time sync
-   - Admin editing daily limit
-   - User re-syncing time
-   - Task completion within limit
-   - Task completion blocked by limit
+   - Challenge creation with hide future tasks enabled
+   - Challenge creation with hide future tasks disabled
+   - Admin toggling the setting
+   - Task list rendering with setting enabled (various progress states)
+   - Task list rendering with setting disabled
+   - Viewing hidden task details
+   - Attempting to complete hidden task (should be blocked)
+   - Completing current task reveals next task
 
 3. **Edge cases**:
-   - Day boundary transitions
-   - Negative time offsets
-   - Limit = 1 (edge case)
-   - Changing limit mid-challenge
+   - Participant has completed all tasks (nothing hidden)
+   - Participant on first task (all future tasks hidden)
+   - Admin in edit tasks view (should see all tasks)
+   - Toggle setting mid-challenge (existing participants see updated view)
+   - Only one task in challenge (nothing to hide)

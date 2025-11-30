@@ -21,6 +21,7 @@ const (
 	StateAwaitingCreatorName          = "awaiting_creator_name"
 	StateAwaitingCreatorEmoji         = "awaiting_creator_emoji"
 	StateAwaitingDailyLimit           = "awaiting_daily_limit"
+	StateAwaitingHideFutureTasks      = "awaiting_hide_future_tasks"
 	StateAwaitingCreatorSyncTime      = "awaiting_creator_sync_time"
 
 	// Task management

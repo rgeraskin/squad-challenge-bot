@@ -14,7 +14,7 @@ func TestCompletionService_Complete(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "User", "💪", 0)
 
@@ -45,7 +45,7 @@ func TestCompletionService_Uncomplete(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "User", "💪", 0)
 
@@ -71,7 +71,7 @@ func TestCompletionService_GetCurrentTaskNum(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task1, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	taskSvc.Create(challenge.ID, "Task 2", "", "")
 	task3, _ := taskSvc.Create(challenge.ID, "Task 3", "", "")
@@ -108,7 +108,7 @@ func TestCompletionService_IsAllCompleted(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task1, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	task2, _ := taskSvc.Create(challenge.ID, "Task 2", "", "")
 	participant, _ := participantSvc.Join(challenge.ID, 12345, "User", "💪", 0)
@@ -154,7 +154,7 @@ func TestCompletionService_GetCompletionsByTaskID(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	p1, _ := participantSvc.Join(challenge.ID, 12345, "User1", "💪", 0)
 	p2, _ := participantSvc.Join(challenge.ID, 67890, "User2", "🔥", 0)
@@ -180,7 +180,7 @@ func TestCompletionService_GetCompletedTaskIDs(t *testing.T) {
 	completionSvc := NewCompletionService(repo)
 
 	// Setup
-	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0)
+	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 	task1, _ := taskSvc.Create(challenge.ID, "Task 1", "", "")
 	task2, _ := taskSvc.Create(challenge.ID, "Task 2", "", "")
 	taskSvc.Create(challenge.ID, "Task 3", "", "")

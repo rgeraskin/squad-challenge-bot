@@ -9,16 +9,17 @@ import (
 
 // TaskListData holds data for rendering task list
 type TaskListData struct {
-	ChallengeName     string
+	ChallengeName        string
 	ChallengeDescription string
-	TotalTasks        int
-	CompletedTasks    int
-	ParticipantCount  int
-	Tasks             []*domain.Task
-	CompletedTaskIDs  map[int64]bool
-	ParticipantEmojis map[int64][]string // task ID -> list of emojis of participants on that task
-	CurrentUserEmoji  string
-	CurrentTaskNum    int
+	TotalTasks           int
+	CompletedTasks       int
+	ParticipantCount     int
+	Tasks                []*domain.Task
+	CompletedTaskIDs     map[int64]bool
+	ParticipantEmojis    map[int64][]string // task ID -> list of emojis of participants on that task
+	CurrentUserEmoji     string
+	CurrentTaskNum       int
+	HideFutureTasks      bool // hide task names after current task
 }
 
 // RenderTaskList renders the main challenge view with task list
@@ -40,9 +41,9 @@ func RenderTaskList(data TaskListData) string {
 		// Calculate visible range: 2 prev + current + 2 next (max 5)
 		startIdx, endIdx := CalculateVisibleRange(data.CurrentTaskNum, len(data.Tasks))
 
-		// Show "..." if there are tasks before the visible range
+		// Show count of tasks before the visible range
 		if startIdx > 0 {
-			sb.WriteString("...\n")
+			sb.WriteString(fmt.Sprintf("↑ %d more task(s)\n", startIdx))
 		}
 
 		for i := startIdx; i <= endIdx && i < len(data.Tasks); i++ {
@@ -57,29 +58,38 @@ func RenderTaskList(data TaskListData) string {
 				status = "⬜"
 			}
 
+			// Check if task should be hidden
+			isHidden := data.HideFutureTasks && task.OrderNum > data.CurrentTaskNum
+
 			// Task line
-			line := fmt.Sprintf("%s %d. %s", status, task.OrderNum, task.Title)
+			var line string
+			if isHidden {
+				line = fmt.Sprintf("%s %d. <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>", status, task.OrderNum)
+			} else {
+				line = fmt.Sprintf("%s %d. %s", status, task.OrderNum, task.Title)
 
-			// Add participant emojis
-			if emojis, ok := data.ParticipantEmojis[task.ID]; ok && len(emojis) > 0 {
-				if len(emojis) <= 4 {
-					line += "    " + strings.Join(emojis, "")
-				} else {
-					line += "    " + strings.Join(emojis[:4], "") + fmt.Sprintf(" +%d", len(emojis)-4)
+				// Add participant emojis (only for visible tasks)
+				if emojis, ok := data.ParticipantEmojis[task.ID]; ok && len(emojis) > 0 {
+					if len(emojis) <= 4 {
+						line += "    " + strings.Join(emojis, "")
+					} else {
+						line += "    " + strings.Join(emojis[:4], "") + fmt.Sprintf(" +%d", len(emojis)-4)
+					}
 				}
-			}
 
-			// Mark current user's position
-			if task.OrderNum == data.CurrentTaskNum && data.CurrentUserEmoji != "" {
-				line += "    ← YOU"
+				// Mark current user's position
+				if task.OrderNum == data.CurrentTaskNum && data.CurrentUserEmoji != "" {
+					line += "    ← YOU"
+				}
 			}
 
 			sb.WriteString(line + "\n")
 		}
 
-		// Show "..." if there are tasks after the visible range
+		// Show count of tasks after the visible range
 		if endIdx < len(data.Tasks)-1 {
-			sb.WriteString("...\n")
+			remaining := len(data.Tasks) - 1 - endIdx
+			sb.WriteString(fmt.Sprintf("↓ %d more task(s)\n", remaining))
 		}
 	}
 
@@ -121,6 +131,8 @@ type AllTasksData struct {
 	ChallengeName    string
 	Tasks            []*domain.Task
 	CompletedTaskIDs map[int64]bool
+	HideFutureTasks  bool
+	CurrentTaskNum   int
 }
 
 // RenderAllTasks renders the full list of all tasks
@@ -144,7 +156,15 @@ func RenderAllTasks(data AllTasksData) string {
 				status = "⬜"
 			}
 
-			line := fmt.Sprintf("%s %d. %s", status, task.OrderNum, task.Title)
+			// Check if task should be hidden
+			isHidden := data.HideFutureTasks && task.OrderNum > data.CurrentTaskNum
+
+			var line string
+			if isHidden {
+				line = fmt.Sprintf("%s %d. <tg-spoiler>🔒 Complete previous tasks to unlock</tg-spoiler>", status, task.OrderNum)
+			} else {
+				line = fmt.Sprintf("%s %d. %s", status, task.OrderNum, task.Title)
+			}
 			sb.WriteString(line + "\n")
 		}
 	}

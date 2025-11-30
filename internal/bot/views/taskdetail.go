@@ -63,3 +63,22 @@ func RenderTaskDetail(data TaskDetailData) string {
 
 	return sb.String()
 }
+
+// HiddenTaskDetailData holds data for rendering hidden task detail view
+type HiddenTaskDetailData struct {
+	TaskOrderNum   int
+	CurrentTaskNum int
+}
+
+// RenderHiddenTaskDetail renders the hidden task detail view
+func RenderHiddenTaskDetail(data HiddenTaskDetailData) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("🔒 Task #%d: Hidden\n", data.TaskOrderNum))
+	sb.WriteString("─────────────────────────\n\n")
+	sb.WriteString("This task is not yet unlocked.\n\n")
+	sb.WriteString("Complete your previous tasks first to reveal this task's details.\n\n")
+	sb.WriteString(fmt.Sprintf("Your current task: Task #%d\n", data.CurrentTaskNum))
+
+	return sb.String()
+}

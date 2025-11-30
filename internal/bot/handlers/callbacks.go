@@ -46,6 +46,8 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		"skip_daily_limit":       true,
 		"skip_creator_sync_time": true,
 		"skip_sync_time":         true,
+		"hide_future_yes":        true,
+		"hide_future_no":         true,
 		"cancel":                 true,
 	}
 
@@ -57,22 +59,23 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 
 	// Handle admin-protected actions
 	adminActions := map[string]bool{
-		"admin_panel":              true,
-		"add_task":                 true,
-		"edit_tasks":               true,
-		"edit_task":                true,
-		"edit_task_title":          true,
-		"edit_task_description":    true,
-		"edit_task_image":          true,
-		"delete_task":              true,
-		"confirm_delete_task":      true,
-		"reorder_tasks":            true,
-		"reorder_select":           true,
-		"reorder_move":             true,
-		"randomize_tasks":          true,
+		"admin_panel":                true,
+		"add_task":                   true,
+		"edit_tasks":                 true,
+		"edit_task":                  true,
+		"edit_task_title":            true,
+		"edit_task_description":      true,
+		"edit_task_image":            true,
+		"delete_task":                true,
+		"confirm_delete_task":        true,
+		"reorder_tasks":              true,
+		"reorder_select":             true,
+		"reorder_move":               true,
+		"randomize_tasks":            true,
 		"edit_challenge_name":        true,
 		"edit_challenge_description": true,
 		"edit_daily_limit":           true,
+		"toggle_hide_future":         true,
 		"delete_challenge":           true,
 		"confirm_delete_challenge":   true,
 	}
@@ -189,6 +192,8 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.handleEditChallengeDescription(c)
 	case "edit_daily_limit":
 		return h.handleEditDailyLimit(c)
+	case "toggle_hide_future":
+		return h.handleToggleHideFutureTasks(c)
 	case "delete_challenge":
 		return h.handleDeleteChallenge(c)
 	case "confirm_delete_challenge":
@@ -250,6 +255,10 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.handleSkip(c)
 	case "skip_daily_limit":
 		return h.skipDailyLimit(c)
+	case "hide_future_yes":
+		return h.processHideFutureTasks(c, true)
+	case "hide_future_no":
+		return h.processHideFutureTasks(c, false)
 	case "skip_creator_sync_time":
 		return h.skipCreatorSyncTime(c)
 	case "skip_sync_time":

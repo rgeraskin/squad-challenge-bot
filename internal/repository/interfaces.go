@@ -13,6 +13,7 @@ type ChallengeRepository interface {
 	GetByUserID(telegramID int64) ([]*domain.Challenge, error)
 	Update(challenge *domain.Challenge) error
 	UpdateDailyLimit(id string, limit int) error
+	UpdateHideFutureTasks(id string, hide bool) error
 	Delete(id string) error
 	Exists(id string) (bool, error)
 }
