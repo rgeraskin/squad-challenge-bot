@@ -1,13 +1,10 @@
-version: '3.8'
-
 services:
   bot:
     build: .
+    image: rgeraskin/squad-challenge-bot:0.1.0
+    container_name: squad-challenge-bot
     restart: unless-stopped
     env_file:
       - .env
     volumes:
-      - bot_data:/app/data
-
-volumes:
-  bot_data:
+      - ./data:/app/data
