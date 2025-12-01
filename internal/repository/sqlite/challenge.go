@@ -36,11 +36,11 @@ func (r *ChallengeRepo) GetByID(id string) (*domain.Challenge, error) {
 func (r *ChallengeRepo) GetByUserID(telegramID int64) ([]*domain.Challenge, error) {
 	var challenges []*domain.Challenge
 	err := r.db.Select(&challenges, `
-		SELECT c.* FROM challenges c
-		JOIN participants p ON c.id = p.challenge_id
-		WHERE p.telegram_id = ?
+		SELECT DISTINCT c.* FROM challenges c
+		LEFT JOIN participants p ON c.id = p.challenge_id
+		WHERE p.telegram_id = ? OR c.creator_id = ?
 		ORDER BY c.updated_at DESC
-	`, telegramID)
+	`, telegramID, telegramID)
 	return challenges, err
 }
 

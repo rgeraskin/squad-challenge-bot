@@ -1,10 +1,10 @@
 package service
 
 import (
-	"log"
 	"time"
 
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+	"github.com/rgeraskin/squad-challenge-bot/internal/logger"
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
 )
 
@@ -163,9 +163,14 @@ func TimeUntilUserMidnight(offsetMinutes int) time.Duration {
 // GetCompletionsToday returns the number of completions for today (user's day)
 func (s *CompletionService) GetCompletionsToday(participantID int64, offsetMinutes int) (int, error) {
 	dayStart, dayEnd := GetUserDayBoundaries(offsetMinutes)
-	log.Printf("[DEBUG] GetCompletionsToday: participantID=%d, offsetMinutes=%d, dayStart=%v, dayEnd=%v", participantID, offsetMinutes, dayStart, dayEnd)
+	logger.Debug("GetCompletionsToday",
+		"participant_id", participantID,
+		"offset_minutes", offsetMinutes,
+		"day_start", dayStart,
+		"day_end", dayEnd,
+	)
 	count, err := s.repo.Completion().CountCompletionsInRange(participantID, dayStart, dayEnd)
-	log.Printf("[DEBUG] GetCompletionsToday: count=%d, err=%v", count, err)
+	logger.Debug("GetCompletionsToday result", "count", count, "error", err)
 	return count, err
 }
 

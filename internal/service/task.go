@@ -89,11 +89,6 @@ func (s *TaskService) Update(task *domain.Task) error {
 
 // Delete deletes a task and renumbers remaining tasks
 func (s *TaskService) Delete(taskID int64, challengeID string) error {
-	task, err := s.GetByID(taskID)
-	if err != nil {
-		return err
-	}
-
 	if err := s.repo.Task().Delete(taskID); err != nil {
 		return err
 	}
@@ -115,7 +110,6 @@ func (s *TaskService) Delete(taskID int64, challengeID string) error {
 		return s.repo.Task().UpdateOrderNums(challengeID, updates)
 	}
 
-	_ = task // silence unused warning
 	return nil
 }
 

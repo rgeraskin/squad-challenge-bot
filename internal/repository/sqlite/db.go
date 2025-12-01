@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
 )
 
@@ -31,8 +31,14 @@ func New(dbPath string) (*SQLiteRepository, error) {
 		return nil, err
 	}
 
-	db, err := sqlx.Connect("sqlite3", dbPath+"?_foreign_keys=on")
+	db, err := sqlx.Connect("sqlite", dbPath)
 	if err != nil {
+		return nil, err
+	}
+
+	// Enable foreign keys (must be set per connection)
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		db.Close()
 		return nil, err
 	}
 

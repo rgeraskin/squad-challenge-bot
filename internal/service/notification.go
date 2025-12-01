@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/rgeraskin/squad-challenge-bot/internal/logger"
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
 	tele "gopkg.in/telebot.v3"
 )
@@ -39,6 +40,7 @@ func (u TelegramUser) Recipient() string {
 func (s *NotificationService) NotifyJoin(challengeID string, joinerEmoji, joinerName string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
+		logger.Error("NotifyJoin: failed to get participants", "challenge_id", challengeID, "error", err)
 		return
 	}
 
@@ -48,7 +50,9 @@ func (s *NotificationService) NotifyJoin(challengeID string, joinerEmoji, joiner
 		if p.TelegramID == excludeUserID || !p.NotifyEnabled {
 			continue
 		}
-		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
+			logger.Warn("NotifyJoin: failed to send", "telegram_id", p.TelegramID, "error", err)
+		}
 	}
 }
 
@@ -56,6 +60,7 @@ func (s *NotificationService) NotifyJoin(challengeID string, joinerEmoji, joiner
 func (s *NotificationService) NotifyTaskCompleted(challengeID string, completerEmoji, completerName, taskTitle string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
+		logger.Error("NotifyTaskCompleted: failed to get participants", "challenge_id", challengeID, "error", err)
 		return
 	}
 
@@ -65,7 +70,9 @@ func (s *NotificationService) NotifyTaskCompleted(challengeID string, completerE
 		if p.TelegramID == excludeUserID || !p.NotifyEnabled {
 			continue
 		}
-		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
+			logger.Warn("NotifyTaskCompleted: failed to send", "telegram_id", p.TelegramID, "error", err)
+		}
 	}
 }
 
@@ -73,6 +80,7 @@ func (s *NotificationService) NotifyTaskCompleted(challengeID string, completerE
 func (s *NotificationService) NotifyChallengeCompleted(challengeID string, completerEmoji, completerName string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
+		logger.Error("NotifyChallengeCompleted: failed to get participants", "challenge_id", challengeID, "error", err)
 		return
 	}
 
@@ -82,20 +90,25 @@ func (s *NotificationService) NotifyChallengeCompleted(challengeID string, compl
 		if p.TelegramID == excludeUserID || !p.NotifyEnabled {
 			continue
 		}
-		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
+			logger.Warn("NotifyChallengeCompleted: failed to send", "telegram_id", p.TelegramID, "error", err)
+		}
 	}
 }
 
 // NotifyUserChallengeCompleted sends a celebration message directly to a user who completed
 func (s *NotificationService) NotifyUserChallengeCompleted(userID int64, challengeName string) {
 	message := fmt.Sprintf("🎉🏆 Congratulations! You've completed \"%s\"!", challengeName)
-	s.bot.Send(TelegramUser{ID: userID}, message)
+	if _, err := s.bot.Send(TelegramUser{ID: userID}, message); err != nil {
+		logger.Warn("NotifyUserChallengeCompleted: failed to send", "user_id", userID, "error", err)
+	}
 }
 
 // NotifyLeave notifies all participants that someone left the challenge
 func (s *NotificationService) NotifyLeave(challengeID string, leaverEmoji, leaverName string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
+		logger.Error("NotifyLeave: failed to get participants", "challenge_id", challengeID, "error", err)
 		return
 	}
 
@@ -105,7 +118,9 @@ func (s *NotificationService) NotifyLeave(challengeID string, leaverEmoji, leave
 		if p.TelegramID == excludeUserID || !p.NotifyEnabled {
 			continue
 		}
-		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
+			logger.Warn("NotifyLeave: failed to send", "telegram_id", p.TelegramID, "error", err)
+		}
 	}
 }
 
@@ -113,6 +128,7 @@ func (s *NotificationService) NotifyLeave(challengeID string, leaverEmoji, leave
 func (s *NotificationService) NotifyChallengeDeleted(challengeID, challengeName string, excludeUserID int64) {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
+		logger.Error("NotifyChallengeDeleted: failed to get participants", "challenge_id", challengeID, "error", err)
 		return
 	}
 
@@ -123,6 +139,8 @@ func (s *NotificationService) NotifyChallengeDeleted(challengeID, challengeName 
 			continue
 		}
 		// Always send deletion notification regardless of notify_enabled
-		s.bot.Send(TelegramUser{ID: p.TelegramID}, message)
+		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
+			logger.Warn("NotifyChallengeDeleted: failed to send", "telegram_id", p.TelegramID, "error", err)
+		}
 	}
 }

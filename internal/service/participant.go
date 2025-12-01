@@ -10,7 +10,6 @@ import (
 var (
 	ErrParticipantNotFound = errors.New("participant not found")
 	ErrEmojiTaken          = errors.New("emoji is already taken")
-	ErrInvalidEmoji        = errors.New("invalid emoji")
 	ErrEmptyName           = errors.New("name cannot be empty")
 	ErrNameTooLong         = errors.New("name is too long (max 30 characters)")
 )

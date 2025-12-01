@@ -56,6 +56,9 @@ func (s *ChallengeService) Create(name, description string, creatorID int64, dai
 		if !exists {
 			break
 		}
+		if i == 9 {
+			return nil, errors.New("failed to generate unique challenge ID")
+		}
 	}
 
 	challenge := &domain.Challenge{

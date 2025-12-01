@@ -82,7 +82,10 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	}
 
 	if adminActions[action] {
-		isAdmin, _ := h.checkAdminAccess(c)
+		isAdmin, err := h.checkAdminAccess(c)
+		if err != nil {
+			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
+		}
 		if !isAdmin {
 			return h.sendError(c, "🔒 Sorry, only the admin can do that!")
 		}

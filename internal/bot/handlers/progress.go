@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/views"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+	"github.com/rgeraskin/squad-challenge-bot/internal/logger"
 	"github.com/rgeraskin/squad-challenge-bot/internal/service"
 	tele "gopkg.in/telebot.v3"
 )
@@ -55,34 +55,29 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
-	log.Printf(
-		"[DEBUG] handleCompleteTask: challengeID=%s, taskID=%d, participantID=%d",
-		challengeID,
-		taskID,
-		participant.ID,
-	)
-	log.Printf(
-		"[DEBUG] challenge.DailyTaskLimit=%d, participant.TimeOffsetMinutes=%d",
-		challenge.DailyTaskLimit,
-		participant.TimeOffsetMinutes,
+	logger.Debug("handleCompleteTask",
+		"challenge_id", challengeID,
+		"task_id", taskID,
+		"participant_id", participant.ID,
+		"daily_task_limit", challenge.DailyTaskLimit,
+		"time_offset_minutes", participant.TimeOffsetMinutes,
 	)
 
 	if challenge.DailyTaskLimit > 0 {
 		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
 		if err != nil {
-			log.Printf("[DEBUG] CheckDailyLimit error: %v", err)
+			logger.Debug("CheckDailyLimit error", "error", err)
 			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 		}
 
-		log.Printf(
-			"[DEBUG] PRE-completion limitInfo: Allowed=%v, Completed=%d, Limit=%d",
-			limitInfo.Allowed,
-			limitInfo.Completed,
-			limitInfo.Limit,
+		logger.Debug("PRE-completion limitInfo",
+			"allowed", limitInfo.Allowed,
+			"completed", limitInfo.Completed,
+			"limit", limitInfo.Limit,
 		)
 
 		if !limitInfo.Allowed {
-			log.Printf("[DEBUG] Daily limit reached BEFORE completion, blocking")
+			logger.Debug("Daily limit reached BEFORE completion, blocking")
 			return h.showDailyLimitReached(c, limitInfo)
 		}
 	}
@@ -105,36 +100,27 @@ func (h *Handler) handleCompleteTask(c tele.Context, taskIDStr string) error {
 		}
 	}
 
-	log.Printf(
-		"[DEBUG] About to call Complete(taskID=%d, participantID=%d)",
-		taskID,
-		participant.ID,
-	)
+	logger.Debug("About to call Complete", "task_id", taskID, "participant_id", participant.ID)
 	completion, err := h.completion.Complete(taskID, participant.ID)
 	if err != nil {
-		log.Printf("[DEBUG] Complete() error: %v", err)
+		logger.Debug("Complete() error", "error", err)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
-	log.Printf(
-		"[DEBUG] Complete() returned: completion.ID=%d, completion.CompletedAt=%v",
-		completion.ID,
-		completion.CompletedAt,
-	)
+	logger.Debug("Complete() returned", "completion_id", completion.ID, "completed_at", completion.CompletedAt)
 
 	// Post-completion check for daily limit (handles race conditions)
 	// If limit exceeded after completion, uncomplete and show limit message
 	if challenge.DailyTaskLimit > 0 {
 		limitInfo, err := h.completion.CheckDailyLimit(participant, challenge.DailyTaskLimit)
-		log.Printf(
-			"[DEBUG] POST-completion limitInfo: err=%v, Allowed=%v, Completed=%d, Limit=%d",
-			err,
-			limitInfo.Allowed,
-			limitInfo.Completed,
-			limitInfo.Limit,
+		logger.Debug("POST-completion limitInfo",
+			"error", err,
+			"allowed", limitInfo.Allowed,
+			"completed", limitInfo.Completed,
+			"limit", limitInfo.Limit,
 		)
 		if err == nil && limitInfo != nil && limitInfo.Completed > challenge.DailyTaskLimit {
 			// Limit exceeded due to race condition - rollback
-			log.Printf("[DEBUG] Race condition detected! Rolling back completion")
+			logger.Debug("Race condition detected! Rolling back completion")
 			h.completion.Uncomplete(taskID, participant.ID)
 			limitInfo.Completed = challenge.DailyTaskLimit // Show correct count
 			limitInfo.Allowed = false
