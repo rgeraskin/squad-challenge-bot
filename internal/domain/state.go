@@ -48,4 +48,7 @@ const (
 	// User settings
 	StateAwaitingNewName  = "awaiting_new_name"
 	StateAwaitingNewEmoji = "awaiting_new_emoji"
+
+	// Super Admin
+	StateAwaitingSuperAdminID = "awaiting_super_admin_id"
 )

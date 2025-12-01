@@ -374,19 +374,26 @@ func (h *Handler) showAllTasks(c tele.Context) error {
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
-	participant, err := h.participant.GetByChallengeAndUser(challengeID, userID)
-	if err != nil || participant == nil {
+	participant, _ := h.participant.GetByChallengeAndUser(challengeID, userID)
+
+	// Check if we're in observer mode (super admin who's not a participant)
+	isObserverMode := h.isInObserverMode(userID)
+
+	// If not a participant and not in observer mode, show error
+	if participant == nil && !isObserverMode {
 		return h.sendError(c, "😕 You're not in this challenge.")
 	}
 
-	// Get completion data
-	completedIDs, _ := h.completion.GetCompletedTaskIDs(participant.ID)
+	// Get completion data (empty for observer mode without participant)
 	completedSet := make(map[int64]bool)
-	for _, id := range completedIDs {
-		completedSet[id] = true
+	currentTaskNum := 0
+	if participant != nil {
+		completedIDs, _ := h.completion.GetCompletedTaskIDs(participant.ID)
+		for _, id := range completedIDs {
+			completedSet[id] = true
+		}
+		currentTaskNum = h.completion.GetCurrentTaskNum(participant.ID, tasks)
 	}
-
-	currentTaskNum := h.completion.GetCurrentTaskNum(participant.ID, tasks)
 
 	data := views.AllTasksData{
 		ChallengeName:    challenge.Name,

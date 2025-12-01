@@ -32,6 +32,7 @@ func (h *Handler) showSettings(c tele.Context) error {
 	msg += fmt.Sprintf("<b>Challenge:</b> %s\n", challenge.Name)
 	msg += fmt.Sprintf("<b>Name:</b> %s\n", participant.DisplayName)
 	msg += fmt.Sprintf("<b>Emoji:</b> %s\n", participant.Emoji)
+	msg += fmt.Sprintf("<b>Your Telegram ID:</b> <code>%d</code>\n", userID)
 	// msg += fmt.Sprintf("<b>Time:</b> %s\n", userLocalTime.Format("15:04"))
 
 	return c.Send(msg, keyboards.Settings(participant.NotifyEnabled, isAdmin), tele.ModeHTML)

@@ -82,13 +82,40 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		"confirm_delete_challenge":   true,
 	}
 
+	// Handle super-admin-only actions
+	superAdminActions := map[string]bool{
+		"super_admin_menu":      true,
+		"sa_all_challenges":     true,
+		"sa_observe":            true,
+		"sa_grant":              true,
+		"sa_manage":             true,
+		"sa_revoke":             true,
+		"sa_back_to_observer":   true,
+		"back_to_super_admin":   true,
+		"back_to_sa_challenges": true,
+	}
+
+	// Cache super admin check to avoid duplicate DB queries
+	isSuperAdmin := false
+	if adminActions[action] || superAdminActions[action] {
+		isSuperAdmin = h.isSuperAdmin(userID)
+	}
+
 	if adminActions[action] {
 		isAdmin, err := h.checkAdminAccess(c)
 		if err != nil {
+			logger.Error("checkAdminAccess failed", "user_id", userID, "action", action, "error", err)
 			return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 		}
-		if !isAdmin {
+		// Super admin can also perform admin actions
+		if !isAdmin && !isSuperAdmin {
 			return h.sendError(c, "🔒 Sorry, only the admin can do that!")
+		}
+	}
+
+	if superAdminActions[action] {
+		if !isSuperAdmin {
+			return h.sendError(c, "🔒 You don't have super admin privileges.")
 		}
 	}
 
@@ -121,9 +148,24 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	// Navigation
 	case "back_to_main":
 		userState, _ := h.state.Get(userID)
+		// Check if we're in observer mode (super admin viewing a challenge they're not in)
+		if h.isInObserverMode(userID) {
+			challenge, err := h.challenge.GetByID(userState.CurrentChallenge)
+			if err != nil {
+				return h.showAllChallengesObserver(c)
+			}
+			participant, _ := h.participant.GetByChallengeAndUser(userState.CurrentChallenge, userID)
+			return h.showObserverChallengeView(c, challenge, participant != nil)
+		}
 		return h.showMainChallengeView(c, userState.CurrentChallenge)
 	case "back_to_admin":
 		userState, _ := h.state.Get(userID)
+		// Preserve observer mode when going back to admin
+		if h.isInObserverMode(userID) {
+			// Re-set the observer mode state (it may have been cleared)
+			newTempData := map[string]any{TempKeyObserverMode: true}
+			h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+		}
 		return h.showAdminPanel(c, userState.CurrentChallenge)
 	case "back_to_tasks":
 		return h.handleEditTasks(c)
@@ -144,6 +186,12 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.showSettings(c)
 	case "admin_panel":
 		userState, _ := h.state.Get(userID)
+		// Preserve observer mode when accessing admin panel
+		if h.isInObserverMode(userID) {
+			// Re-set the observer mode state to ensure it's preserved
+			newTempData := map[string]any{TempKeyObserverMode: true}
+			h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+		}
 		return h.showAdminPanel(c, userState.CurrentChallenge)
 
 	// Task detail actions
@@ -274,6 +322,30 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	case "skip_name":
 		return h.skipParticipantName(c)
 
+	// Super Admin actions
+	case "super_admin_menu":
+		return h.showSuperAdminMenu(c)
+	case "sa_all_challenges":
+		return h.showAllChallengesObserver(c)
+	case "sa_observe":
+		if len(parts) > 1 {
+			return h.handleObserveChallenge(c, parts[1])
+		}
+	case "sa_grant":
+		return h.handleGrantSuperAdmin(c)
+	case "sa_manage":
+		return h.showManageSuperAdmins(c)
+	case "sa_revoke":
+		if len(parts) > 1 {
+			return h.handleRevokeSuperAdmin(c, parts[1])
+		}
+	case "sa_back_to_observer":
+		return h.handleBackToObserver(c)
+	case "back_to_super_admin":
+		return h.showSuperAdminMenu(c)
+	case "back_to_sa_challenges":
+		return h.showAllChallengesObserver(c)
+
 	// No-op (disabled buttons)
 	case "noop":
 		logger.Debug("noop callback", "user_id", userID)
@@ -310,11 +382,17 @@ func (h *Handler) handleCancel(c tele.Context) error {
 
 	userState, _ := h.state.Get(userID)
 
+	// Check if we're in super admin flow
+	if userState.State == domain.StateAwaitingSuperAdminID {
+		h.state.Reset(userID)
+		return h.showSuperAdminMenu(c)
+	}
+
 	// Check if we're in join flow (has temp data with challenge_id but not yet a participant)
-	var tempData map[string]interface{}
+	var tempData map[string]any
 	h.state.GetTempData(userID, &tempData)
 	if tempData != nil {
-		if _, hasChallenge := tempData["challenge_id"]; hasChallenge {
+		if _, hasChallenge := tempData[TempKeyChallengeID]; hasChallenge {
 			// In join flow - just go back to start menu
 			h.state.Reset(userID)
 			return h.showStartMenu(c)
@@ -323,10 +401,13 @@ func (h *Handler) handleCancel(c tele.Context) error {
 
 	// If we have a current challenge, go back to it
 	if userState.CurrentChallenge != "" {
-		// Verify user is actually a participant of this challenge
+		// Check if we're in observer mode (super admin)
+		isObserverMode := h.isInObserverMode(userID)
+
+		// Verify user is actually a participant of this challenge (unless observer mode)
 		participant, _ := h.participant.GetByChallengeAndUser(userState.CurrentChallenge, userID)
-		if participant == nil {
-			// Not a participant - clear stale state and go to start menu
+		if participant == nil && !isObserverMode {
+			// Not a participant and not in observer mode - clear stale state and go to start menu
 			h.state.Reset(userID)
 			return h.showStartMenu(c)
 		}
@@ -334,7 +415,7 @@ func (h *Handler) handleCancel(c tele.Context) error {
 		// Get task_id before resetting state (for edit task flows)
 		var taskID int64
 		if tempData != nil {
-			if tid, ok := tempData["task_id"]; ok {
+			if tid, ok := tempData[TempKeyTaskID]; ok {
 				if tidFloat, ok := tid.(float64); ok {
 					taskID = int64(tidFloat)
 				} else if tidInt, ok := tid.(int64); ok {
@@ -343,7 +424,41 @@ func (h *Handler) handleCancel(c tele.Context) error {
 			}
 		}
 
+		// Check if in super admin mode editing daily limit
+		isSuperAdminMode := h.isInSuperAdminMode(userID)
+
+		// If in super admin mode, return to admin panel
+		if isSuperAdminMode {
+			h.state.ResetKeepChallenge(userID)
+			// Restore observer mode
+			if isObserverMode {
+				newTempData := map[string]any{TempKeyObserverMode: true}
+				h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+			}
+			return h.showAdminPanel(c, userState.CurrentChallenge)
+		}
+
+		// If in observer mode and canceling from default states, return to admin panel
+		if isObserverMode && userState.State == domain.StateAwaitingNewDailyLimit {
+			h.state.ResetKeepChallenge(userID)
+			newTempData := map[string]any{TempKeyObserverMode: true}
+			h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+			return h.showAdminPanel(c, userState.CurrentChallenge)
+		}
+
 		h.state.ResetKeepChallenge(userID)
+
+		// If in observer mode, return to observer view
+		if isObserverMode {
+			challenge, err := h.challenge.GetByID(userState.CurrentChallenge)
+			if err != nil {
+				return h.showAllChallengesObserver(c)
+			}
+			// Restore observer mode in state
+			newTempData := map[string]any{TempKeyObserverMode: true}
+			h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+			return h.showObserverChallengeView(c, challenge, participant != nil)
+		}
 
 		// Check if we were in admin flow
 		switch userState.State {

@@ -44,6 +44,15 @@ func (r *ChallengeRepo) GetByUserID(telegramID int64) ([]*domain.Challenge, erro
 	return challenges, err
 }
 
+func (r *ChallengeRepo) GetAll() ([]*domain.Challenge, error) {
+	var challenges []*domain.Challenge
+	err := r.db.Select(&challenges, `
+		SELECT * FROM challenges
+		ORDER BY updated_at DESC
+	`)
+	return challenges, err
+}
+
 func (r *ChallengeRepo) Update(challenge *domain.Challenge) error {
 	challenge.UpdatedAt = time.Now()
 	_, err := r.db.NamedExec(`

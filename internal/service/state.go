@@ -96,3 +96,8 @@ func (s *StateService) ResetKeepChallenge(telegramID int64) error {
 	userState.TempData = ""
 	return s.repo.State().Set(userState)
 }
+
+// ResetByChallenge resets all users who have a specific challenge as their current challenge
+func (s *StateService) ResetByChallenge(challengeID string) error {
+	return s.repo.State().ResetByChallenge(challengeID)
+}

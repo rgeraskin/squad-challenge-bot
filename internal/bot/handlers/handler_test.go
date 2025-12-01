@@ -47,6 +47,7 @@ func testHandler(t *testing.T) (*Handler, func()) {
 		service.NewCompletionService(repo),
 		service.NewStateService(repo),
 		nil, // notification service not needed for tests
+		service.NewSuperAdminService(repo),
 		nil, // bot not needed for tests
 	)
 
@@ -334,5 +335,161 @@ func TestSendError(t *testing.T) {
 	msg := ctx.LastMessage()
 	if msg != "Test error message" {
 		t.Errorf("Message = %q, want %q", msg, "Test error message")
+	}
+}
+
+// Super Admin Observer Mode Tests
+
+func TestSuperAdmin_OtherChallenges_FiltersUserChallenges(t *testing.T) {
+	h, cleanup := testHandler(t)
+	defer cleanup()
+
+	superAdminID := int64(11111)
+	otherUserID := int64(22222)
+
+	// Make user a super admin
+	h.superAdmin.SeedFromEnv(superAdminID)
+
+	// Create challenge by super admin (they will be a participant)
+	ch1, _ := h.challenge.Create("Super Admin's Challenge", "", superAdminID, 0, false)
+	h.participant.Join(ch1.ID, superAdminID, "Admin", "👑", 0)
+
+	// Create challenge by another user (super admin is NOT a participant)
+	ch2, _ := h.challenge.Create("Other User's Challenge", "", otherUserID, 0, false)
+	h.participant.Join(ch2.ID, otherUserID, "Other", "🔥", 0)
+
+	// Create another challenge by another user
+	ch3, _ := h.challenge.Create("Third Challenge", "", otherUserID, 0, false)
+	h.participant.Join(ch3.ID, otherUserID, "Other", "⭐", 0)
+
+	// Super admin views "Other Challenges"
+	ctx := testutil.NewMockContext(superAdminID).WithCallback("sa_all_challenges")
+	err := h.HandleCallback(ctx)
+	if err != nil {
+		t.Fatalf("HandleCallback failed: %v", err)
+	}
+
+	// Should show message with other challenges
+	msg := ctx.LastMessage()
+	if !strings.Contains(msg, "Other Challenges") {
+		t.Errorf("Expected 'Other Challenges' in message, got: %s", msg)
+	}
+
+	// Should NOT contain super admin's own challenge
+	if strings.Contains(msg, "Super Admin's Challenge") {
+		t.Errorf("Should not show super admin's own challenge in Other Challenges view")
+	}
+}
+
+func TestSuperAdmin_OtherChallenges_ShowsMessageWhenInAllChallenges(t *testing.T) {
+	h, cleanup := testHandler(t)
+	defer cleanup()
+
+	superAdminID := int64(11111)
+
+	// Make user a super admin
+	h.superAdmin.SeedFromEnv(superAdminID)
+
+	// Create challenge and super admin joins it
+	ch1, _ := h.challenge.Create("Challenge 1", "", superAdminID, 0, false)
+	h.participant.Join(ch1.ID, superAdminID, "Admin", "👑", 0)
+
+	// Super admin views "Other Challenges" - should see "no other challenges" message
+	ctx := testutil.NewMockContext(superAdminID).WithCallback("sa_all_challenges")
+	err := h.HandleCallback(ctx)
+	if err != nil {
+		t.Fatalf("HandleCallback failed: %v", err)
+	}
+
+	msg := ctx.LastMessage()
+	if !strings.Contains(msg, "No other challenges") {
+		t.Errorf("Expected 'No other challenges' message, got: %s", msg)
+	}
+}
+
+func TestSuperAdmin_OtherChallenges_NonSuperAdminDenied(t *testing.T) {
+	h, cleanup := testHandler(t)
+	defer cleanup()
+
+	regularUserID := int64(99999)
+
+	// Regular user tries to access super admin menu
+	ctx := testutil.NewMockContext(regularUserID).WithCallback("sa_all_challenges")
+	err := h.HandleCallback(ctx)
+	if err != nil {
+		t.Fatalf("HandleCallback failed: %v", err)
+	}
+
+	msg := ctx.LastMessage()
+	if !strings.Contains(msg, "super admin privileges") {
+		t.Errorf("Expected denial message, got: %s", msg)
+	}
+}
+
+func TestSuperAdmin_ObserverMode_BackToMainReturnsToObserver(t *testing.T) {
+	h, cleanup := testHandler(t)
+	defer cleanup()
+
+	superAdminID := int64(11111)
+	otherUserID := int64(22222)
+
+	// Make user a super admin
+	h.superAdmin.SeedFromEnv(superAdminID)
+
+	// Create challenge by another user
+	ch, _ := h.challenge.Create("Other Challenge", "", otherUserID, 0, false)
+	h.participant.Join(ch.ID, otherUserID, "Other", "🔥", 0)
+
+	// Set up observer mode state
+	h.state.SetCurrentChallenge(superAdminID, ch.ID)
+	tempData := map[string]any{TempKeyObserverMode: true}
+	h.state.SetStateWithData(superAdminID, domain.StateIdle, tempData)
+
+	// Click "back_to_main" - should return to observer view, not main challenge view
+	ctx := testutil.NewMockContext(superAdminID).WithCallback("back_to_main")
+	err := h.HandleCallback(ctx)
+	if err != nil {
+		t.Fatalf("HandleCallback failed: %v", err)
+	}
+
+	msg := ctx.LastMessage()
+	// Should show observer view, not "not part of this challenge" error
+	if strings.Contains(msg, "not part of this challenge") {
+		t.Errorf("Should return to observer view, not show error. Got: %s", msg)
+	}
+	if !strings.Contains(msg, "Observer Mode") {
+		t.Errorf("Expected Observer Mode view, got: %s", msg)
+	}
+}
+
+func TestSuperAdmin_AdminPanel_ShowsSuperAdminLabel(t *testing.T) {
+	h, cleanup := testHandler(t)
+	defer cleanup()
+
+	superAdminID := int64(11111)
+	otherUserID := int64(22222)
+
+	// Make user a super admin
+	h.superAdmin.SeedFromEnv(superAdminID)
+
+	// Create challenge by another user
+	ch, _ := h.challenge.Create("Other Challenge", "", otherUserID, 0, false)
+	h.participant.Join(ch.ID, otherUserID, "Other", "🔥", 0)
+
+	// Set up observer mode state
+	h.state.SetCurrentChallenge(superAdminID, ch.ID)
+	tempData := map[string]any{TempKeyObserverMode: true}
+	h.state.SetStateWithData(superAdminID, domain.StateIdle, tempData)
+
+	// Access admin panel in observer mode
+	ctx := testutil.NewMockContext(superAdminID).WithCallback("admin_panel")
+	err := h.HandleCallback(ctx)
+	if err != nil {
+		t.Fatalf("HandleCallback failed: %v", err)
+	}
+
+	msg := ctx.LastMessage()
+	if !strings.Contains(msg, "Super Admin") {
+		t.Errorf("Expected 'Super Admin' label in admin panel, got: %s", msg)
 	}
 }

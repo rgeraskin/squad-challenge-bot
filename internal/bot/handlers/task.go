@@ -158,8 +158,8 @@ func (h *Handler) handleEditTaskTitle(c tele.Context, taskIDStr string) error {
 	userID := c.Sender().ID
 	taskID, _ := strconv.ParseInt(taskIDStr, 10, 64)
 
-	tempData := map[string]interface{}{
-		"task_id": taskID,
+	tempData := map[string]any{
+		TempKeyTaskID: taskID,
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditTitle, tempData)
 
@@ -174,9 +174,9 @@ func (h *Handler) processEditTitle(c tele.Context, title string) error {
 		return c.Send("😅 Keep it between 1-100 characters:", keyboards.CancelOnly())
 	}
 
-	var tempData map[string]interface{}
+	var tempData map[string]any
 	h.state.GetTempData(userID, &tempData)
-	taskID := int64(tempData["task_id"].(float64))
+	taskID := int64(tempData[TempKeyTaskID].(float64))
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
@@ -200,8 +200,8 @@ func (h *Handler) handleEditTaskDescription(c tele.Context, taskIDStr string) er
 	userID := c.Sender().ID
 	taskID, _ := strconv.ParseInt(taskIDStr, 10, 64)
 
-	tempData := map[string]interface{}{
-		"task_id": taskID,
+	tempData := map[string]any{
+		TempKeyTaskID: taskID,
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditDescription, tempData)
 
@@ -219,9 +219,9 @@ func (h *Handler) processEditDescription(c tele.Context, description string) err
 		return c.Send("😅 That's a bit long! Keep it under 800 characters:", keyboards.CancelOnly())
 	}
 
-	var tempData map[string]interface{}
+	var tempData map[string]any
 	h.state.GetTempData(userID, &tempData)
-	taskID := int64(tempData["task_id"].(float64))
+	taskID := int64(tempData[TempKeyTaskID].(float64))
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {
@@ -245,8 +245,8 @@ func (h *Handler) handleEditTaskImage(c tele.Context, taskIDStr string) error {
 	userID := c.Sender().ID
 	taskID, _ := strconv.ParseInt(taskIDStr, 10, 64)
 
-	tempData := map[string]interface{}{
-		"task_id": taskID,
+	tempData := map[string]any{
+		TempKeyTaskID: taskID,
 	}
 	h.state.SetStateWithData(userID, domain.StateAwaitingEditImage, tempData)
 
@@ -257,9 +257,9 @@ func (h *Handler) handleEditTaskImage(c tele.Context, taskIDStr string) error {
 func (h *Handler) processEditImage(c tele.Context, fileID string) error {
 	userID := c.Sender().ID
 
-	var tempData map[string]interface{}
+	var tempData map[string]any
 	h.state.GetTempData(userID, &tempData)
-	taskID := int64(tempData["task_id"].(float64))
+	taskID := int64(tempData[TempKeyTaskID].(float64))
 
 	task, err := h.task.GetByID(taskID)
 	if err != nil {

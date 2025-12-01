@@ -17,7 +17,7 @@ type Bot struct {
 }
 
 // New creates a new bot instance
-func New(token string, repo repository.Repository) (*Bot, error) {
+func New(token string, repo repository.Repository, superAdminID int64) (*Bot, error) {
 	pref := tele.Settings{
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -35,6 +35,16 @@ func New(token string, repo repository.Repository) (*Bot, error) {
 	completionSvc := service.NewCompletionService(repo)
 	stateSvc := service.NewStateService(repo)
 	notifySvc := service.NewNotificationService(repo, b)
+	superAdminSvc := service.NewSuperAdminService(repo)
+
+	// Seed super admin from environment
+	if superAdminID > 0 {
+		if err := superAdminSvc.SeedFromEnv(superAdminID); err != nil {
+			logger.Warn("Failed to seed super admin", "error", err)
+		} else {
+			logger.Info("Super admin seeded", "telegram_id", superAdminID)
+		}
+	}
 
 	// Initialize handlers
 	h := handlers.NewHandler(
@@ -45,6 +55,7 @@ func New(token string, repo repository.Repository) (*Bot, error) {
 		completionSvc,
 		stateSvc,
 		notifySvc,
+		superAdminSvc,
 		b,
 	)
 

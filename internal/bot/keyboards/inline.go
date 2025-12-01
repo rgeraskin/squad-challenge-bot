@@ -12,6 +12,7 @@ import (
 func StartMenu(
 	challenges []*domain.Challenge,
 	taskCounts, completedCounts map[string]int,
+	isSuperAdmin bool,
 ) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	rows := make([]tele.Row, 0)
@@ -36,6 +37,12 @@ func StartMenu(
 	createBtn := menu.Data("🎯 Create Challenge", "create_challenge")
 	joinBtn := menu.Data("🚀 Join Challenge", "join_challenge")
 	rows = append(rows, menu.Row(createBtn, joinBtn))
+
+	// Add super admin button if applicable
+	if isSuperAdmin {
+		superAdminBtn := menu.Data("🔑 Super Admin", "super_admin_menu")
+		rows = append(rows, menu.Row(superAdminBtn))
+	}
 
 	menu.Inline(rows...)
 	return menu
@@ -240,7 +247,7 @@ func NewCopyTextKeyboard(challengeID, link string) *CopyTextKeyboard {
 }
 
 // AdminPanel creates the admin panel keyboard
-func AdminPanel(dailyLimit int, hideFutureTasks bool) *tele.ReplyMarkup {
+func AdminPanel(dailyLimit int, hideFutureTasks bool, isObserverMode bool) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 
 	addTaskBtn := menu.Data("➕ Add Task", "add_task")
@@ -267,7 +274,14 @@ func AdminPanel(dailyLimit int, hideFutureTasks bool) *tele.ReplyMarkup {
 	hideBtn := menu.Data(hideText, "toggle_hide_future")
 
 	deleteBtn := menu.Data("🗑 Delete Challenge", "delete_challenge")
-	mainBtn := menu.Data("🏠 Main Menu", "back_to_main")
+
+	// Back button depends on mode
+	var mainBtn tele.Btn
+	if isObserverMode {
+		mainBtn = menu.Data("⬅️ Back to Observer", "sa_back_to_observer")
+	} else {
+		mainBtn = menu.Data("🏠 Main Menu", "back_to_main")
+	}
 
 	menu.Inline(
 		menu.Row(addTaskBtn, editTasksBtn),
@@ -528,6 +542,106 @@ func HideFutureTasksChoice() *tele.ReplyMarkup {
 func HiddenTaskBack() *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	backBtn := menu.Data("⬅️ Back", "back_to_main")
+	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// SuperAdminMenu creates the super admin menu keyboard
+func SuperAdminMenu() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	allChallengesBtn := menu.Data("👁 Other Challenges", "sa_all_challenges")
+	grantBtn := menu.Data("➕ Grant Super Admin", "sa_grant")
+	manageBtn := menu.Data("👑 Manage Admins", "sa_manage")
+	backBtn := menu.Data("⬅️ Back", "exit_challenge")
+
+	menu.Inline(
+		menu.Row(allChallengesBtn),
+		menu.Row(grantBtn, manageBtn),
+		menu.Row(backBtn),
+	)
+	return menu
+}
+
+// AllChallengesObserver creates the all challenges list for observer mode
+func AllChallengesObserver(
+	challenges []*domain.Challenge,
+	taskCounts, participantCounts map[string]int,
+) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, ch := range challenges {
+		tasks := taskCounts[ch.ID]
+		participants := participantCounts[ch.ID]
+		text := fmt.Sprintf("👁 %s (%d tasks, %d members)", ch.Name, tasks, participants)
+		btn := menu.Data(text, "sa_observe", ch.ID)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// ObserverChallengeView creates the observer view keyboard for a challenge
+func ObserverChallengeView(challengeID string, isParticipant bool) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	// Team progress (always visible)
+	teamBtn := menu.Data("👥 Squad Stats", "team_progress")
+	listAllBtn := menu.Data("📋 List All Tasks", "list_all_tasks")
+	rows = append(rows, menu.Row(teamBtn, listAllBtn))
+
+	// Admin panel (super admin can always modify - uses regular admin panel)
+	settingsBtn := menu.Data("🔧 Admin Panel", "admin_panel")
+	rows = append(rows, menu.Row(settingsBtn))
+
+	// If participant, show option to switch to participant view
+	if isParticipant {
+		participantBtn := menu.Data("🎮 Switch to Participant View", "open_challenge", challengeID)
+		rows = append(rows, menu.Row(participantBtn))
+	}
+
+	// Back to challenges list
+	backBtn := menu.Data("⬅️ Back to Challenges", "back_to_sa_challenges")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// ManageSuperAdmins creates the manage super admins keyboard
+func ManageSuperAdmins(admins []*domain.SuperAdmin, currentUserID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, admin := range admins {
+		if admin.TelegramID != currentUserID {
+			// Can revoke others but not self
+			btn := menu.Data(
+				fmt.Sprintf("❌ Revoke %d", admin.TelegramID),
+				"sa_revoke",
+				fmt.Sprintf("%d", admin.TelegramID),
+			)
+			rows = append(rows, menu.Row(btn))
+		}
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// BackToSuperAdmin creates a back to super admin menu button
+func BackToSuperAdmin() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
 	menu.Inline(menu.Row(backBtn))
 	return menu
 }

@@ -21,6 +21,7 @@ type SQLiteRepository struct {
 	participant *ParticipantRepo
 	completion  *CompletionRepo
 	state       *StateRepo
+	superAdmin  *SuperAdminRepo
 }
 
 // New creates a new SQLite repository
@@ -49,6 +50,7 @@ func New(dbPath string) (*SQLiteRepository, error) {
 		participant: &ParticipantRepo{db: db},
 		completion:  &CompletionRepo{db: db},
 		state:       &StateRepo{db: db},
+		superAdmin:  &SuperAdminRepo{db: db},
 	}
 
 	if err := repo.migrate(); err != nil {
@@ -60,12 +62,21 @@ func New(dbPath string) (*SQLiteRepository, error) {
 }
 
 func (r *SQLiteRepository) migrate() error {
-	migration, err := migrationsFS.ReadFile("migrations/001_initial.sql")
-	if err != nil {
-		return err
+	migrations := []string{
+		"migrations/001_initial.sql",
+		"migrations/002_super_admins.sql",
 	}
-	_, err = r.db.Exec(string(migration))
-	return err
+
+	for _, m := range migrations {
+		migration, err := migrationsFS.ReadFile(m)
+		if err != nil {
+			return err
+		}
+		if _, err = r.db.Exec(string(migration)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *SQLiteRepository) Challenge() repository.ChallengeRepository {
@@ -86,6 +97,10 @@ func (r *SQLiteRepository) Completion() repository.CompletionRepository {
 
 func (r *SQLiteRepository) State() repository.StateRepository {
 	return r.state
+}
+
+func (r *SQLiteRepository) SuperAdmin() repository.SuperAdminRepository {
+	return r.superAdmin
 }
 
 func (r *SQLiteRepository) Close() error {

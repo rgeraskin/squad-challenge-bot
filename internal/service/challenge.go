@@ -95,13 +95,13 @@ func (s *ChallengeService) GetByUserID(telegramID int64) ([]*domain.Challenge, e
 }
 
 // UpdateName updates a challenge's name
-func (s *ChallengeService) UpdateName(id string, name string, userID int64) error {
+func (s *ChallengeService) UpdateName(id string, name string, userID int64, isSuperAdmin bool) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return ErrNotAdmin
 	}
 
@@ -110,13 +110,13 @@ func (s *ChallengeService) UpdateName(id string, name string, userID int64) erro
 }
 
 // UpdateDescription updates a challenge's description (admin only)
-func (s *ChallengeService) UpdateDescription(id string, description string, userID int64) error {
+func (s *ChallengeService) UpdateDescription(id string, description string, userID int64, isSuperAdmin bool) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return ErrNotAdmin
 	}
 
@@ -125,13 +125,13 @@ func (s *ChallengeService) UpdateDescription(id string, description string, user
 }
 
 // UpdateDailyLimit updates a challenge's daily task limit (admin only)
-func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64) error {
+func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64, isSuperAdmin bool) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return ErrNotAdmin
 	}
 
@@ -139,13 +139,13 @@ func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64) 
 }
 
 // UpdateHideFutureTasks updates the hide future tasks setting (admin only)
-func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID int64) error {
+func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID int64, isSuperAdmin bool) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return ErrNotAdmin
 	}
 
@@ -153,13 +153,13 @@ func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID in
 }
 
 // ToggleHideFutureTasks toggles the hide future tasks setting and returns new value (admin only)
-func (s *ChallengeService) ToggleHideFutureTasks(id string, userID int64) (bool, error) {
+func (s *ChallengeService) ToggleHideFutureTasks(id string, userID int64, isSuperAdmin bool) (bool, error) {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return false, err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return false, ErrNotAdmin
 	}
 
@@ -169,13 +169,13 @@ func (s *ChallengeService) ToggleHideFutureTasks(id string, userID int64) (bool,
 }
 
 // Delete deletes a challenge (admin only)
-func (s *ChallengeService) Delete(id string, userID int64) error {
+func (s *ChallengeService) Delete(id string, userID int64, isSuperAdmin bool) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
 	}
 
-	if challenge.CreatorID != userID {
+	if challenge.CreatorID != userID && !isSuperAdmin {
 		return ErrNotAdmin
 	}
 

@@ -160,7 +160,7 @@ func TestChallengeService_UpdateName(t *testing.T) {
 	userID := int64(12345)
 	challenge, _ := svc.Create("Original Name", "", userID, 0, false)
 
-	err := svc.UpdateName(challenge.ID, "New Name", userID)
+	err := svc.UpdateName(challenge.ID, "New Name", userID, false)
 	if err != nil {
 		t.Fatalf("UpdateName() error = %v", err)
 	}
@@ -177,7 +177,7 @@ func TestChallengeService_UpdateName_NotAdmin(t *testing.T) {
 
 	challenge, _ := svc.Create("Original Name", "", 12345, 0, false)
 
-	err := svc.UpdateName(challenge.ID, "New Name", 99999)
+	err := svc.UpdateName(challenge.ID, "New Name", 99999, false)
 	if err != ErrNotAdmin {
 		t.Errorf("UpdateName() by non-admin: error = %v, want ErrNotAdmin", err)
 	}
@@ -189,7 +189,7 @@ func TestChallengeService_Delete(t *testing.T) {
 
 	challenge, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
-	err := svc.Delete(challenge.ID, 12345)
+	err := svc.Delete(challenge.ID, 12345, false)
 	if err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
@@ -206,7 +206,7 @@ func TestChallengeService_Delete_NotAdmin(t *testing.T) {
 
 	challenge, _ := svc.Create("Test Challenge", "", 12345, 0, false)
 
-	err := svc.Delete(challenge.ID, 99999)
+	err := svc.Delete(challenge.ID, 99999, false)
 	if err != ErrNotAdmin {
 		t.Errorf("Delete() by non-admin: error = %v, want ErrNotAdmin", err)
 	}
@@ -252,5 +252,101 @@ func TestChallengeService_CanJoin_Full(t *testing.T) {
 	err := challengeSvc.CanJoin(challenge.ID, 99999)
 	if err != ErrChallengeFull {
 		t.Errorf("CanJoin() for 11th user: error = %v, want ErrChallengeFull", err)
+	}
+}
+
+// Super Admin Override Tests
+
+func TestChallengeService_UpdateName_SuperAdminOverride(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewChallengeService(repo)
+
+	// Create challenge by user 12345
+	challenge, _ := svc.Create("Original Name", "", 12345, 0, false)
+
+	// Non-admin user 99999 with super admin flag should succeed
+	err := svc.UpdateName(challenge.ID, "Super Admin Changed", 99999, true)
+	if err != nil {
+		t.Fatalf("UpdateName() with super admin: error = %v", err)
+	}
+
+	updated, _ := svc.GetByID(challenge.ID)
+	if updated.Name != "Super Admin Changed" {
+		t.Errorf("UpdateName() Name = %q, want %q", updated.Name, "Super Admin Changed")
+	}
+}
+
+func TestChallengeService_UpdateDescription_SuperAdminOverride(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewChallengeService(repo)
+
+	challenge, _ := svc.Create("Test", "Original Desc", 12345, 0, false)
+
+	// Non-admin with super admin flag
+	err := svc.UpdateDescription(challenge.ID, "Super Admin Desc", 99999, true)
+	if err != nil {
+		t.Fatalf("UpdateDescription() with super admin: error = %v", err)
+	}
+
+	updated, _ := svc.GetByID(challenge.ID)
+	if updated.Description != "Super Admin Desc" {
+		t.Errorf("UpdateDescription() Description = %q, want %q", updated.Description, "Super Admin Desc")
+	}
+}
+
+func TestChallengeService_UpdateDailyLimit_SuperAdminOverride(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewChallengeService(repo)
+
+	challenge, _ := svc.Create("Test", "", 12345, 0, false)
+
+	// Non-admin with super admin flag
+	err := svc.UpdateDailyLimit(challenge.ID, 10, 99999, true)
+	if err != nil {
+		t.Fatalf("UpdateDailyLimit() with super admin: error = %v", err)
+	}
+
+	updated, _ := svc.GetByID(challenge.ID)
+	if updated.DailyTaskLimit != 10 {
+		t.Errorf("UpdateDailyLimit() DailyTaskLimit = %d, want %d", updated.DailyTaskLimit, 10)
+	}
+}
+
+func TestChallengeService_ToggleHideFutureTasks_SuperAdminOverride(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewChallengeService(repo)
+
+	challenge, _ := svc.Create("Test", "", 12345, 0, false)
+
+	// Non-admin with super admin flag
+	newState, err := svc.ToggleHideFutureTasks(challenge.ID, 99999, true)
+	if err != nil {
+		t.Fatalf("ToggleHideFutureTasks() with super admin: error = %v", err)
+	}
+	if !newState {
+		t.Error("ToggleHideFutureTasks() should return true after toggling from false")
+	}
+
+	updated, _ := svc.GetByID(challenge.ID)
+	if !updated.HideFutureTasks {
+		t.Error("Challenge HideFutureTasks should be true after toggle")
+	}
+}
+
+func TestChallengeService_Delete_SuperAdminOverride(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewChallengeService(repo)
+
+	challenge, _ := svc.Create("Test", "", 12345, 0, false)
+
+	// Non-admin with super admin flag
+	err := svc.Delete(challenge.ID, 99999, true)
+	if err != nil {
+		t.Fatalf("Delete() with super admin: error = %v", err)
+	}
+
+	_, err = svc.GetByID(challenge.ID)
+	if err != ErrChallengeNotFound {
+		t.Errorf("GetByID() after super admin delete: error = %v, want ErrChallengeNotFound", err)
 	}
 }

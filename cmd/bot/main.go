@@ -32,7 +32,10 @@ func main() {
 
 	// Initialize bot
 	logger.Info("Initializing bot")
-	b, err := bot.New(cfg.TelegramBotToken, repo)
+	if cfg.SuperAdminID > 0 {
+		logger.Info("Super admin ID configured", "telegram_id", cfg.SuperAdminID)
+	}
+	b, err := bot.New(cfg.TelegramBotToken, repo, cfg.SuperAdminID)
 	if err != nil {
 		logger.Fatal("Failed to initialize bot", "error", err)
 	}

@@ -130,6 +130,9 @@ func (h *Handler) showStartMenu(c tele.Context) error {
 		}
 	}
 
+	// Check if user is super admin
+	isSuperAdmin := h.isSuperAdmin(userID)
+
 	text := "👋 <i>Hey there!</i>\n\n"
 	if len(challenges) > 0 {
 		text += "Here are your challenges:"
@@ -137,7 +140,7 @@ func (h *Handler) showStartMenu(c tele.Context) error {
 		text += "No challenges yet — let's fix that!\nCreate your own or join a friend's 🚀"
 	}
 
-	kb := keyboards.StartMenu(challenges, taskCounts, completedCounts)
+	kb := keyboards.StartMenu(challenges, taskCounts, completedCounts, isSuperAdmin)
 	logger.Debug(
 		"Sending start menu",
 		"user_id",
@@ -146,6 +149,8 @@ func (h *Handler) showStartMenu(c tele.Context) error {
 		len(challenges),
 		"has_keyboard",
 		kb != nil,
+		"is_super_admin",
+		isSuperAdmin,
 	)
 	err = c.Send(text, kb, tele.ModeHTML)
 	if err != nil {

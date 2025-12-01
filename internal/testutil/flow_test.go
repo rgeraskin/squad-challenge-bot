@@ -281,7 +281,7 @@ func TestFlow_DeleteChallenge(t *testing.T) {
 	f.JoinChallenge(challengeID, memberID, "Member", "🔥")
 
 	// Delete challenge
-	err := f.Challenge.Delete(challengeID, creatorID)
+	err := f.Challenge.Delete(challengeID, creatorID, false)
 	if err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}

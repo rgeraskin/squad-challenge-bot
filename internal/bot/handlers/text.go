@@ -74,6 +74,10 @@ func (h *Handler) HandleText(c tele.Context) error {
 		}
 		return c.Send("🎨 Just one emoji please!")
 
+	// Super Admin
+	case domain.StateAwaitingSuperAdminID:
+		return h.processGrantSuperAdmin(c, text)
+
 	default:
 		// Idle state - ignore text or show help
 		return nil

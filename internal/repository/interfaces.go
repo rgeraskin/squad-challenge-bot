@@ -11,6 +11,7 @@ type ChallengeRepository interface {
 	Create(challenge *domain.Challenge) error
 	GetByID(id string) (*domain.Challenge, error)
 	GetByUserID(telegramID int64) ([]*domain.Challenge, error)
+	GetAll() ([]*domain.Challenge, error)
 	Update(challenge *domain.Challenge) error
 	UpdateDailyLimit(id string, limit int) error
 	UpdateHideFutureTasks(id string, hide bool) error
@@ -60,6 +61,16 @@ type StateRepository interface {
 	Get(telegramID int64) (*domain.UserState, error)
 	Set(state *domain.UserState) error
 	Reset(telegramID int64) error
+	ResetByChallenge(challengeID string) error
+}
+
+// SuperAdminRepository defines methods for super admin data access
+type SuperAdminRepository interface {
+	Create(telegramID int64) error
+	Delete(telegramID int64) error
+	IsSuperAdmin(telegramID int64) (bool, error)
+	GetAll() ([]*domain.SuperAdmin, error)
+	Exists(telegramID int64) (bool, error)
 }
 
 // Repository combines all repositories
@@ -69,5 +80,6 @@ type Repository interface {
 	Participant() ParticipantRepository
 	Completion() CompletionRepository
 	State() StateRepository
+	SuperAdmin() SuperAdminRepository
 	Close() error
 }

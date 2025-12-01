@@ -124,23 +124,38 @@ func (s *NotificationService) NotifyLeave(challengeID string, leaverEmoji, leave
 	}
 }
 
-// NotifyChallengeDeleted notifies all participants that a challenge was deleted
-func (s *NotificationService) NotifyChallengeDeleted(challengeID, challengeName string, excludeUserID int64) {
+// GetParticipantsForDeletion returns the list of participants before a challenge is deleted
+// This must be called BEFORE the challenge is deleted due to CASCADE deletes
+func (s *NotificationService) GetParticipantsForDeletion(challengeID string) []int64 {
 	participants, err := s.repo.Participant().GetByChallengeID(challengeID)
 	if err != nil {
-		logger.Error("NotifyChallengeDeleted: failed to get participants", "challenge_id", challengeID, "error", err)
-		return
+		logger.Error("GetParticipantsForDeletion: failed to get participants", "challenge_id", challengeID, "error", err)
+		return nil
+	}
+	ids := make([]int64, len(participants))
+	for i, p := range participants {
+		ids[i] = p.TelegramID
+	}
+	return ids
+}
+
+// NotifyChallengeDeletedAsync sends deletion notifications to participants
+// This should be called AFTER the challenge is deleted, with participant IDs fetched beforehand
+func (s *NotificationService) NotifyChallengeDeletedAsync(challengeID, challengeName string, participantIDs []int64, excludeUserID int64) {
+	// Reset state for all users viewing this challenge (moves them to /start menu)
+	if err := s.repo.State().ResetByChallenge(challengeID); err != nil {
+		logger.Error("NotifyChallengeDeletedAsync: failed to reset user states", "challenge_id", challengeID, "error", err)
 	}
 
-	message := fmt.Sprintf("❌ Challenge \"%s\" has been deleted by admin.", challengeName)
+	message := fmt.Sprintf("❌ Challenge \"%s\" has been deleted by admin.\n\nUse /start to return to main menu.", challengeName)
 
-	for _, p := range participants {
-		if p.TelegramID == excludeUserID {
+	for _, telegramID := range participantIDs {
+		if telegramID == excludeUserID {
 			continue
 		}
 		// Always send deletion notification regardless of notify_enabled
-		if _, err := s.bot.Send(TelegramUser{ID: p.TelegramID}, message); err != nil {
-			logger.Warn("NotifyChallengeDeleted: failed to send", "telegram_id", p.TelegramID, "error", err)
+		if _, err := s.bot.Send(TelegramUser{ID: telegramID}, message); err != nil {
+			logger.Warn("NotifyChallengeDeletedAsync: failed to send", "telegram_id", telegramID, "error", err)
 		}
 	}
 }

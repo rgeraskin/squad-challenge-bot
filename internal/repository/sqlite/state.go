@@ -56,3 +56,13 @@ func (r *StateRepo) Reset(telegramID int64) error {
 	`, domain.StateIdle, time.Now(), telegramID)
 	return err
 }
+
+// ResetByChallenge resets all users who have a specific challenge as their current challenge
+func (r *StateRepo) ResetByChallenge(challengeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE user_states
+		SET state = ?, temp_data = NULL, current_challenge = NULL, updated_at = ?
+		WHERE current_challenge = ?
+	`, domain.StateIdle, time.Now(), challengeID)
+	return err
+}

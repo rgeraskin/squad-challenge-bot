@@ -8,20 +8,29 @@ import (
 
 	"github.com/rgeraskin/squad-challenge-bot/internal/bot/keyboards"
 	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
+	"github.com/rgeraskin/squad-challenge-bot/internal/logger"
 	tele "gopkg.in/telebot.v3"
 )
 
 // showAdminPanel shows the admin panel
 func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
+	userID := c.Sender().ID
+
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
+	// Check if we're in observer mode
+	isObserverMode := h.isInObserverMode(userID)
+
 	taskCount, _ := h.task.CountByChallengeID(challengeID)
 	participantCount, _ := h.participant.CountByChallengeID(challengeID)
 
 	msg := "🔧 <i>Admin Panel</i>\n\n"
+	if isObserverMode {
+		msg = "🔧 <i>Admin Panel (Super Admin)</i>\n\n"
+	}
 	msg += fmt.Sprintf("<b>Challenge:</b> %s\n", challenge.Name)
 	msg += fmt.Sprintf("<b>Description:</b> %s\n", challenge.Description)
 	msg += fmt.Sprintf("<b>Challenge ID:</b> <code>%s</code>\n", challenge.ID)
@@ -40,7 +49,7 @@ func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 
 	return c.Send(
 		msg,
-		keyboards.AdminPanel(challenge.DailyTaskLimit, challenge.HideFutureTasks),
+		keyboards.AdminPanel(challenge.DailyTaskLimit, challenge.HideFutureTasks, isObserverMode),
 		tele.ModeHTML,
 	)
 }
@@ -63,7 +72,8 @@ func (h *Handler) processNewChallengeName(c tele.Context, name string) error {
 	userState, _ := h.state.Get(userID)
 	challengeID := userState.CurrentChallenge
 
-	if err := h.challenge.UpdateName(challengeID, name, userID); err != nil {
+	isSuperAdmin := h.isSuperAdmin(userID)
+	if err := h.challenge.UpdateName(challengeID, name, userID, isSuperAdmin); err != nil {
 		h.state.ResetKeepChallenge(userID)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
@@ -94,7 +104,8 @@ func (h *Handler) processNewChallengeDescription(c tele.Context, description str
 	userState, _ := h.state.Get(userID)
 	challengeID := userState.CurrentChallenge
 
-	if err := h.challenge.UpdateDescription(challengeID, description, userID); err != nil {
+	isSuperAdmin := h.isSuperAdmin(userID)
+	if err := h.challenge.UpdateDescription(challengeID, description, userID, isSuperAdmin); err != nil {
 		h.state.ResetKeepChallenge(userID)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
@@ -143,17 +154,31 @@ func (h *Handler) processNewDailyLimit(c tele.Context, input string) error {
 	userState, _ := h.state.Get(userID)
 	challengeID := userState.CurrentChallenge
 
-	if err := h.challenge.UpdateDailyLimit(challengeID, limit, userID); err != nil {
+	// Check if in super admin mode or observer mode
+	isSuperAdminMode := h.isInSuperAdminMode(userID)
+	isObserverMode := h.isInObserverMode(userID)
+
+	// Use super admin mode flag or check if user is super admin
+	isSuperAdmin := isSuperAdminMode || h.isSuperAdmin(userID)
+	if err := h.challenge.UpdateDailyLimit(challengeID, limit, userID, isSuperAdmin); err != nil {
 		h.state.ResetKeepChallenge(userID)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
-	h.state.ResetKeepChallenge(userID)
+	// Preserve observer mode if it was set
+	if isObserverMode {
+		newTempData := map[string]any{TempKeyObserverMode: true}
+		h.state.SetStateWithData(userID, domain.StateIdle, newTempData)
+	} else {
+		h.state.ResetKeepChallenge(userID)
+	}
+
 	if limit > 0 {
 		c.Send(fmt.Sprintf("✅ Got it! %d tasks/day max", limit))
 	} else {
 		c.Send("✅ No limits now — go wild! 🚀")
 	}
+
 	return h.showAdminPanel(c, challengeID)
 }
 
@@ -164,7 +189,8 @@ func (h *Handler) handleToggleHideFutureTasks(c tele.Context) error {
 	userState, _ := h.state.Get(userID)
 	challengeID := userState.CurrentChallenge
 
-	newValue, err := h.challenge.ToggleHideFutureTasks(challengeID, userID)
+	isSuperAdmin := h.isSuperAdmin(userID)
+	newValue, err := h.challenge.ToggleHideFutureTasks(challengeID, userID, isSuperAdmin)
 	if err != nil {
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
@@ -203,17 +229,39 @@ func (h *Handler) handleDeleteChallenge(c tele.Context) error {
 func (h *Handler) handleConfirmDeleteChallenge(c tele.Context) error {
 	userID := c.Sender().ID
 
-	userState, _ := h.state.Get(userID)
-	challengeID := userState.CurrentChallenge
-
-	challenge, _ := h.challenge.GetByID(challengeID)
-
-	// Notify participants before deletion
-	go h.notification.NotifyChallengeDeleted(challengeID, challenge.Name, userID)
-
-	if err := h.challenge.Delete(challengeID, userID); err != nil {
+	userState, err := h.state.Get(userID)
+	if err != nil {
+		logger.Error("handleConfirmDeleteChallenge: failed to get state", "user_id", userID, "error", err)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
+	challengeID := userState.CurrentChallenge
+	if challengeID == "" {
+		logger.Warn("handleConfirmDeleteChallenge: no current challenge", "user_id", userID)
+		return h.sendError(c, "😅 No challenge selected. Please try again.")
+	}
+
+	challenge, err := h.challenge.GetByID(challengeID)
+	if err != nil {
+		logger.Error("handleConfirmDeleteChallenge: failed to get challenge", "user_id", userID, "challenge_id", challengeID, "error", err)
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
+	}
+	if challenge == nil {
+		logger.Warn("handleConfirmDeleteChallenge: challenge not found", "user_id", userID, "challenge_id", challengeID)
+		return h.sendError(c, "😅 Challenge not found. It may have already been deleted.")
+	}
+
+	// Get participants BEFORE deletion (CASCADE will remove them)
+	participantIDs := h.notification.GetParticipantsForDeletion(challengeID)
+	challengeName := challenge.Name
+
+	isSuperAdmin := h.isSuperAdmin(userID)
+	if err := h.challenge.Delete(challengeID, userID, isSuperAdmin); err != nil {
+		logger.Error("handleConfirmDeleteChallenge: failed to delete", "user_id", userID, "challenge_id", challengeID, "error", err)
+		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
+	}
+
+	// Notify participants AFTER successful deletion (in background to not block response)
+	go h.notification.NotifyChallengeDeletedAsync(challengeID, challengeName, participantIDs, userID)
 
 	h.state.Reset(userID)
 	c.Send("💨 Poof! Challenge deleted.")

@@ -137,6 +137,66 @@ func TestStateService_ResetKeepChallenge(t *testing.T) {
 	}
 }
 
+func TestStateService_ResetByChallenge(t *testing.T) {
+	repo := setupTestRepo(t)
+	svc := NewStateService(repo)
+
+	challengeID := "TESTCH01"
+	otherChallengeID := "OTHERCH1"
+
+	// Set up users with different challenges
+	user1 := int64(11111)
+	user2 := int64(22222)
+	user3 := int64(33333)
+
+	// User 1 and 2 are viewing the target challenge
+	svc.SetCurrentChallenge(user1, challengeID)
+	svc.SetStateWithData(user1, domain.StateAwaitingTaskTitle, map[string]string{"task": "test"})
+
+	svc.SetCurrentChallenge(user2, challengeID)
+	svc.SetState(user2, domain.StateIdle)
+
+	// User 3 is viewing a different challenge
+	svc.SetCurrentChallenge(user3, otherChallengeID)
+	svc.SetState(user3, domain.StateAwaitingEditTitle)
+
+	// Reset all users viewing the target challenge
+	err := svc.ResetByChallenge(challengeID)
+	if err != nil {
+		t.Fatalf("ResetByChallenge() error = %v", err)
+	}
+
+	// User 1 should be reset (state and currentChallenge cleared)
+	state1, _ := svc.Get(user1)
+	if state1.State != domain.StateIdle {
+		t.Errorf("User1 State = %q, want %q", state1.State, domain.StateIdle)
+	}
+	if state1.CurrentChallenge != "" {
+		t.Errorf("User1 CurrentChallenge = %q, want empty", state1.CurrentChallenge)
+	}
+	if state1.TempData != "" {
+		t.Errorf("User1 TempData = %q, want empty", state1.TempData)
+	}
+
+	// User 2 should also be reset
+	state2, _ := svc.Get(user2)
+	if state2.State != domain.StateIdle {
+		t.Errorf("User2 State = %q, want %q", state2.State, domain.StateIdle)
+	}
+	if state2.CurrentChallenge != "" {
+		t.Errorf("User2 CurrentChallenge = %q, want empty", state2.CurrentChallenge)
+	}
+
+	// User 3 should NOT be affected (different challenge)
+	state3, _ := svc.Get(user3)
+	if state3.State != domain.StateAwaitingEditTitle {
+		t.Errorf("User3 State = %q, want %q", state3.State, domain.StateAwaitingEditTitle)
+	}
+	if state3.CurrentChallenge != otherChallengeID {
+		t.Errorf("User3 CurrentChallenge = %q, want %q", state3.CurrentChallenge, otherChallengeID)
+	}
+}
+
 // State Transition Tests - ensure all state transitions work correctly
 
 func TestStateTransitions_ChallengeCreation(t *testing.T) {
