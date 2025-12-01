@@ -100,3 +100,11 @@ func (h *Handler) isInSuperAdminMode(userID int64) bool {
 	}
 	return false
 }
+
+// getTelegramName returns the user's Telegram username or first name as fallback
+func getTelegramName(c tele.Context) string {
+	if c.Sender().Username != "" {
+		return c.Sender().Username
+	}
+	return c.Sender().FirstName
+}

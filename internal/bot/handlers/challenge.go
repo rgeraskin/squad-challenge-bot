@@ -190,7 +190,7 @@ func (h *Handler) processChallengeDescription(c tele.Context, description string
 	tempData["challenge_description"] = description
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("👤 What should we call you?", keyboards.CancelOnly())
+	return c.Send("👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>", keyboards.SkipName(getTelegramName(c)), tele.ModeHTML)
 }
 
 // skipChallengeDescription skips the description step
@@ -202,7 +202,7 @@ func (h *Handler) skipChallengeDescription(c tele.Context) error {
 	tempData["challenge_description"] = ""
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("👤 What should we call you?", keyboards.CancelOnly())
+	return c.Send("👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>", keyboards.SkipName(getTelegramName(c)), tele.ModeHTML)
 }
 
 // processCreatorName processes creator name input during creation
@@ -475,13 +475,7 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 		dailyLimitText,
 	)
 
-	// Get Telegram name for skip button
-	telegramName := c.Sender().Username
-	if telegramName == "" {
-		telegramName = c.Sender().FirstName
-	}
-
-	return c.Send(msg, keyboards.SkipName(telegramName), tele.ModeHTML)
+	return c.Send(msg, keyboards.SkipName(getTelegramName(c)), tele.ModeHTML)
 }
 
 // processParticipantName processes participant name input during join
@@ -511,11 +505,7 @@ func (h *Handler) processParticipantName(c tele.Context, name string) error {
 func (h *Handler) skipParticipantName(c tele.Context) error {
 	userID := c.Sender().ID
 
-	// Use Telegram username if available, otherwise use first name
-	name := c.Sender().Username
-	if name == "" {
-		name = c.Sender().FirstName
-	}
+	name := getTelegramName(c)
 
 	// Validate length (should be fine but just in case)
 	if len(name) > 30 {
@@ -525,9 +515,20 @@ func (h *Handler) skipParticipantName(c tele.Context) error {
 	var tempData map[string]interface{}
 	h.state.GetTempData(userID, &tempData)
 	tempData["display_name"] = name
-	h.state.SetStateWithData(userID, domain.StateAwaitingParticipantEmoji, tempData)
 
-	// Get used emojis
+	// Check current state to determine next state
+	userState, _ := h.state.Get(userID)
+	if userState.State == domain.StateAwaitingCreatorName {
+		// Creator flow - no used emojis yet
+		h.state.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, tempData)
+		return c.Send(
+			"🎨 Pick an emoji that represents you!\n\n(or send your own)",
+			keyboards.EmojiSelector(nil),
+		)
+	}
+
+	// Participant flow - get used emojis
+	h.state.SetStateWithData(userID, domain.StateAwaitingParticipantEmoji, tempData)
 	challengeID := tempData["challenge_id"].(string)
 	usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
 
