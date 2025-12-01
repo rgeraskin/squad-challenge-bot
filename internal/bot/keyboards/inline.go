@@ -491,6 +491,15 @@ func SkipDailyLimit() *tele.ReplyMarkup {
 	return menu
 }
 
+// SkipName creates the keyboard for name input step with skip option
+func SkipName(telegramName string) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	skipBtn := menu.Data(fmt.Sprintf("⏭ Skip (use %s)", telegramName), "skip_name")
+	cancelBtn := menu.Data("❌ Cancel", "cancel")
+	menu.Inline(menu.Row(skipBtn, cancelBtn))
+	return menu
+}
+
 // SkipSyncTime creates the keyboard for sync time step during challenge creation
 func SkipSyncTime(isCreator bool) *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}

@@ -469,12 +469,19 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 		msg += fmt.Sprintf("\n<i>%s</i>\n", challenge.Description)
 	}
 	msg += fmt.Sprintf(
-		"\n📋 Tasks: <b>%d</b>\n👥 Members: <b>%d</b>\n🕓 Daily tasks limit: <b>%s</b>\n\nWhat should we call you?",
+		"\n📋 Tasks: <b>%d</b>\n👥 Members: <b>%d</b>\n🕓 Daily tasks limit: <b>%s</b>\n\nWhat should we call you?\n\n<i>Tap Skip to use your Telegram name</i>",
 		taskCount,
 		participantCount,
 		dailyLimitText,
 	)
-	return c.Send(msg, keyboards.CancelOnly(), tele.ModeHTML)
+
+	// Get Telegram name for skip button
+	telegramName := c.Sender().Username
+	if telegramName == "" {
+		telegramName = c.Sender().FirstName
+	}
+
+	return c.Send(msg, keyboards.SkipName(telegramName), tele.ModeHTML)
 }
 
 // processParticipantName processes participant name input during join
@@ -483,6 +490,36 @@ func (h *Handler) processParticipantName(c tele.Context, name string) error {
 
 	if len(name) == 0 || len(name) > 30 {
 		return c.Send("😬 Keep it between 1-30 characters!", keyboards.CancelOnly())
+	}
+
+	var tempData map[string]interface{}
+	h.state.GetTempData(userID, &tempData)
+	tempData["display_name"] = name
+	h.state.SetStateWithData(userID, domain.StateAwaitingParticipantEmoji, tempData)
+
+	// Get used emojis
+	challengeID := tempData["challenge_id"].(string)
+	usedEmojis, _ := h.participant.GetUsedEmojis(challengeID)
+
+	return c.Send(
+		"🎨 Pick an emoji that represents you!\n\n(or send your own)",
+		keyboards.EmojiSelector(usedEmojis),
+	)
+}
+
+// skipParticipantName skips name input and uses Telegram username or first name
+func (h *Handler) skipParticipantName(c tele.Context) error {
+	userID := c.Sender().ID
+
+	// Use Telegram username if available, otherwise use first name
+	name := c.Sender().Username
+	if name == "" {
+		name = c.Sender().FirstName
+	}
+
+	// Validate length (should be fine but just in case)
+	if len(name) > 30 {
+		name = name[:30]
 	}
 
 	var tempData map[string]interface{}

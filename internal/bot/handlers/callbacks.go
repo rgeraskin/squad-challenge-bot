@@ -44,6 +44,7 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	stateDependentActions := map[string]bool{
 		"select_emoji":           true,
 		"skip":                   true,
+		"skip_name":              true,
 		"skip_daily_limit":       true,
 		"skip_creator_sync_time": true,
 		"skip_sync_time":         true,
@@ -270,6 +271,8 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		return h.skipCreatorSyncTime(c)
 	case "skip_sync_time":
 		return h.skipSyncTime(c)
+	case "skip_name":
+		return h.skipParticipantName(c)
 
 	// No-op (disabled buttons)
 	case "noop":

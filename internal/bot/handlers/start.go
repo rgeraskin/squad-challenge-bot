@@ -87,14 +87,20 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 	}
 
 	msg := fmt.Sprintf(
-		"🎯 %s\n\n📋 %d tasks • 👥 %d members\n🕓 Daily limit: %s\n\nWhat should we call you?",
+		"🎯 %s\n\n📋 %d tasks • 👥 %d members\n🕓 Daily limit: %s\n\nWhat should we call you?\n\n<i>Tap Skip to use your Telegram name</i>",
 		challenge.Name,
 		taskCount,
 		participantCount,
 		dailyLimitText,
 	)
 
-	return c.Send(msg, keyboards.CancelOnly())
+	// Get Telegram name for skip button
+	telegramName := c.Sender().Username
+	if telegramName == "" {
+		telegramName = c.Sender().FirstName
+	}
+
+	return c.Send(msg, keyboards.SkipName(telegramName), tele.ModeHTML)
 }
 
 // showStartMenu shows the start menu with user's challenges
