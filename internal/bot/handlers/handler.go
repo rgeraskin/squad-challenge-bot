@@ -13,6 +13,11 @@ const (
 	TempKeySuperAdminMode = "super_admin_mode"
 	TempKeyChallengeID    = "challenge_id"
 	TempKeyTaskID         = "task_id"
+
+	// Template-related temp data keys
+	TempKeyTemplateID   = "template_id"
+	TempKeyTemplateName = "template_name"
+	TempKeyFromTemplate = "from_template"
 )
 
 // Handler holds all bot handlers and services
@@ -25,6 +30,7 @@ type Handler struct {
 	state        *service.StateService
 	notification *service.NotificationService
 	superAdmin   *service.SuperAdminService
+	template     *service.TemplateService
 	bot          *tele.Bot
 }
 
@@ -38,6 +44,7 @@ func NewHandler(
 	state *service.StateService,
 	notification *service.NotificationService,
 	superAdmin *service.SuperAdminService,
+	template *service.TemplateService,
 	bot *tele.Bot,
 ) *Handler {
 	return &Handler{
@@ -49,6 +56,7 @@ func NewHandler(
 		state:        state,
 		notification: notification,
 		superAdmin:   superAdmin,
+		template:     template,
 		bot:          bot,
 	}
 }

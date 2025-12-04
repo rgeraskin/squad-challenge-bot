@@ -78,6 +78,48 @@ func (h *Handler) HandleText(c tele.Context) error {
 	case domain.StateAwaitingSuperAdminID:
 		return h.processGrantSuperAdmin(c, text)
 
+	// Template-based challenge creation
+	case domain.StateAwaitingTemplateChallengeName:
+		return h.processTemplateChallengeName(c, text)
+	case domain.StateAwaitingTemplateCreatorName:
+		return h.processTemplateCreatorName(c, text)
+	case domain.StateAwaitingTemplateCreatorEmoji:
+		if util.IsValidEmoji(text) {
+			return h.processTemplateCreatorEmoji(c, text)
+		}
+		return c.Send("🎨 Just one emoji please!")
+	case domain.StateAwaitingTemplateCreatorSyncTime:
+		return h.processTemplateCreatorSyncTime(c, text)
+
+	// Template admin editing (Super Admin)
+	case domain.StateAwaitingNewTemplateName:
+		return h.processNewTemplateName(c, text)
+	case domain.StateAwaitingNewTemplateDescription:
+		return h.processNewTemplateDescription(c, text)
+	case domain.StateAwaitingNewTemplateDailyLimit:
+		return h.processNewTemplateDailyLimit(c, text)
+	case domain.StateAwaitingTplTaskTitle:
+		return h.processTplTaskTitle(c, text)
+	case domain.StateAwaitingTplTaskDescription:
+		if text == "skip" || text == "Skip" {
+			return h.skipTplTaskDescription(c)
+		}
+		return h.processTplTaskDescription(c, text)
+	case domain.StateAwaitingTplTaskImage:
+		if text == "skip" || text == "Skip" {
+			return h.skipTplTaskImage(c)
+		}
+		return c.Send("📷 Please send an image or type 'skip'")
+	case domain.StateAwaitingTplEditTitle:
+		return h.processTplEditTitle(c, text)
+	case domain.StateAwaitingTplEditDescription:
+		return h.processTplEditDescription(c, text)
+	case domain.StateAwaitingTplEditImage:
+		if text == "remove" || text == "Remove" {
+			return h.processTplEditImage(c, "")
+		}
+		return c.Send("📷 Please send an image or type 'remove'")
+
 	default:
 		// Idle state - ignore text or show help
 		return nil
@@ -105,6 +147,10 @@ func (h *Handler) HandlePhoto(c tele.Context) error {
 		return h.processTaskImage(c, fileID)
 	case domain.StateAwaitingEditImage:
 		return h.processEditImage(c, fileID)
+	case domain.StateAwaitingTplTaskImage:
+		return h.processTplTaskImage(c, fileID)
+	case domain.StateAwaitingTplEditImage:
+		return h.processTplEditImage(c, fileID)
 	default:
 		return nil
 	}

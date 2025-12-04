@@ -4,6 +4,7 @@ import (
 	"embed"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -15,13 +16,15 @@ var migrationsFS embed.FS
 
 // SQLiteRepository implements repository.Repository for SQLite
 type SQLiteRepository struct {
-	db          *sqlx.DB
-	challenge   *ChallengeRepo
-	task        *TaskRepo
-	participant *ParticipantRepo
-	completion  *CompletionRepo
-	state       *StateRepo
-	superAdmin  *SuperAdminRepo
+	db           *sqlx.DB
+	challenge    *ChallengeRepo
+	task         *TaskRepo
+	participant  *ParticipantRepo
+	completion   *CompletionRepo
+	state        *StateRepo
+	superAdmin   *SuperAdminRepo
+	template     *TemplateRepo
+	templateTask *TemplateTaskRepo
 }
 
 // New creates a new SQLite repository
@@ -44,13 +47,15 @@ func New(dbPath string) (*SQLiteRepository, error) {
 	}
 
 	repo := &SQLiteRepository{
-		db:          db,
-		challenge:   &ChallengeRepo{db: db},
-		task:        &TaskRepo{db: db},
-		participant: &ParticipantRepo{db: db},
-		completion:  &CompletionRepo{db: db},
-		state:       &StateRepo{db: db},
-		superAdmin:  &SuperAdminRepo{db: db},
+		db:           db,
+		challenge:    &ChallengeRepo{db: db},
+		task:         &TaskRepo{db: db},
+		participant:  &ParticipantRepo{db: db},
+		completion:   &CompletionRepo{db: db},
+		state:        &StateRepo{db: db},
+		superAdmin:   &SuperAdminRepo{db: db},
+		template:     &TemplateRepo{db: db},
+		templateTask: &TemplateTaskRepo{db: db},
 	}
 
 	if err := repo.migrate(); err != nil {
@@ -65,6 +70,8 @@ func (r *SQLiteRepository) migrate() error {
 	migrations := []string{
 		"migrations/001_initial.sql",
 		"migrations/002_super_admins.sql",
+		"migrations/003_templates.sql",
+		"migrations/004_template_task_image.sql",
 	}
 
 	for _, m := range migrations {
@@ -72,7 +79,12 @@ func (r *SQLiteRepository) migrate() error {
 		if err != nil {
 			return err
 		}
-		if _, err = r.db.Exec(string(migration)); err != nil {
+		_, err = r.db.Exec(string(migration))
+		if err != nil {
+			// Ignore "duplicate column" errors for ALTER TABLE migrations
+			if strings.Contains(err.Error(), "duplicate column") {
+				continue
+			}
 			return err
 		}
 	}
@@ -101,6 +113,14 @@ func (r *SQLiteRepository) State() repository.StateRepository {
 
 func (r *SQLiteRepository) SuperAdmin() repository.SuperAdminRepository {
 	return r.superAdmin
+}
+
+func (r *SQLiteRepository) Template() repository.TemplateRepository {
+	return r.template
+}
+
+func (r *SQLiteRepository) TemplateTask() repository.TemplateTaskRepository {
+	return r.templateTask
 }
 
 func (r *SQLiteRepository) Close() error {

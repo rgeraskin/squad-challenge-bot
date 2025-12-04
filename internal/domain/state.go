@@ -51,4 +51,24 @@ const (
 
 	// Super Admin
 	StateAwaitingSuperAdminID = "awaiting_super_admin_id"
+
+	// Template-based challenge creation states (User)
+	StateSelectTemplateOrScratch         = "select_template_or_scratch"
+	StateSelectTemplate                  = "select_template"
+	StateViewingTemplate                 = "viewing_template"
+	StateAwaitingTemplateChallengeName   = "awaiting_template_challenge_name"
+	StateAwaitingTemplateCreatorName     = "awaiting_template_creator_name"
+	StateAwaitingTemplateCreatorEmoji    = "awaiting_template_creator_emoji"
+	StateAwaitingTemplateCreatorSyncTime = "awaiting_template_creator_sync_time"
+
+	// Template admin/editing states (Super Admin)
+	StateAwaitingNewTemplateName        = "awaiting_new_template_name"
+	StateAwaitingNewTemplateDescription = "awaiting_new_template_description"
+	StateAwaitingNewTemplateDailyLimit  = "awaiting_new_template_daily_limit"
+	StateAwaitingTplTaskTitle           = "awaiting_tpl_task_title"
+	StateAwaitingTplTaskDescription     = "awaiting_tpl_task_description"
+	StateAwaitingTplTaskImage           = "awaiting_tpl_task_image"
+	StateAwaitingTplEditTitle       = "awaiting_tpl_edit_title"
+	StateAwaitingTplEditDescription = "awaiting_tpl_edit_description"
+	StateAwaitingTplEditImage       = "awaiting_tpl_edit_image"
 )

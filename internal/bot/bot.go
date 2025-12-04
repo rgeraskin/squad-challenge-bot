@@ -36,6 +36,7 @@ func New(token string, repo repository.Repository, superAdminID int64) (*Bot, er
 	stateSvc := service.NewStateService(repo)
 	notifySvc := service.NewNotificationService(repo, b)
 	superAdminSvc := service.NewSuperAdminService(repo)
+	templateSvc := service.NewTemplateService(repo)
 
 	// Seed super admin from environment
 	if superAdminID > 0 {
@@ -56,6 +57,7 @@ func New(token string, repo repository.Repository, superAdminID int64) (*Bot, er
 		stateSvc,
 		notifySvc,
 		superAdminSvc,
+		templateSvc,
 		b,
 	)
 

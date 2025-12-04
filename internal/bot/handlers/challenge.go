@@ -126,10 +126,19 @@ func (h *Handler) handleCreateChallenge(c tele.Context) error {
 		return h.sendError(c, "😬 Whoa, you've hit the limit of 10 challenges!")
 	}
 
+	// Check if any templates exist
+	templateCount, _ := h.template.Count()
+	if templateCount > 0 {
+		// Show template or scratch choice
+		logger.Debug("Templates exist, showing choice", "user_id", userID, "template_count", templateCount)
+		return h.showTemplateOrScratchChoice(c)
+	}
+
+	// No templates - go directly to scratch flow (existing behavior)
 	logger.Debug("Setting state to awaiting challenge name", "user_id", userID)
 	h.state.SetState(userID, domain.StateAwaitingChallengeName)
 	err = c.Send(
-		"🏆 <i>Let's create a challenge!</i>\n\nWhat do you want to call it?",
+		"🏆 <i>Enter challenge name</i>\n\nWhat do you want to call it?",
 		keyboards.CancelOnly(),
 		tele.ModeHTML,
 	)
@@ -521,6 +530,15 @@ func (h *Handler) skipParticipantName(c tele.Context) error {
 	if userState.State == domain.StateAwaitingCreatorName {
 		// Creator flow - no used emojis yet
 		h.state.SetStateWithData(userID, domain.StateAwaitingCreatorEmoji, tempData)
+		return c.Send(
+			"🎨 Pick an emoji that represents you!\n\n(or send your own)",
+			keyboards.EmojiSelector(nil),
+		)
+	}
+
+	if userState.State == domain.StateAwaitingTemplateCreatorName {
+		// Template-based challenge creator flow - no used emojis yet
+		h.state.SetStateWithData(userID, domain.StateAwaitingTemplateCreatorEmoji, tempData)
 		return c.Send(
 			"🎨 Pick an emoji that represents you!\n\n(or send your own)",
 			keyboards.EmojiSelector(nil),

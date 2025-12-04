@@ -48,6 +48,7 @@ func testHandler(t *testing.T) (*Handler, func()) {
 		service.NewStateService(repo),
 		nil, // notification service not needed for tests
 		service.NewSuperAdminService(repo),
+		service.NewTemplateService(repo),
 		nil, // bot not needed for tests
 	)
 

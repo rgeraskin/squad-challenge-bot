@@ -224,3 +224,71 @@ func (s *ChallengeService) CanJoin(challengeID string, userID int64) error {
 
 	return nil
 }
+
+// CreateFromTemplate creates a challenge from a template with provided name and creator
+func (s *ChallengeService) CreateFromTemplate(
+	template *domain.Template,
+	templateTasks []*domain.TemplateTask,
+	name string,
+	creatorID int64,
+) (*domain.Challenge, error) {
+	// Check max challenges for user
+	challenges, err := s.repo.Challenge().GetByUserID(creatorID)
+	if err != nil {
+		return nil, err
+	}
+	if len(challenges) >= MaxChallengesPerUser {
+		return nil, ErrMaxChallengesReached
+	}
+
+	// Generate unique ID
+	var id string
+	for i := 0; i < 10; i++ {
+		id, err = util.GenerateID()
+		if err != nil {
+			return nil, err
+		}
+		exists, err := s.repo.Challenge().Exists(id)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			break
+		}
+		if i == 9 {
+			return nil, errors.New("failed to generate unique challenge ID")
+		}
+	}
+
+	// Create challenge with template settings
+	challenge := &domain.Challenge{
+		ID:              id,
+		Name:            name,
+		Description:     template.Description,
+		CreatorID:       creatorID,
+		DailyTaskLimit:  template.DailyTaskLimit,
+		HideFutureTasks: template.HideFutureTasks,
+	}
+
+	if err := s.repo.Challenge().Create(challenge); err != nil {
+		return nil, err
+	}
+
+	// Copy tasks from template
+	for _, tt := range templateTasks {
+		task := &domain.Task{
+			ChallengeID: challenge.ID,
+			OrderNum:    tt.OrderNum,
+			Title:       tt.Title,
+			Description: tt.Description,
+			ImageFileID: tt.ImageFileID,
+		}
+		if err := s.repo.Task().Create(task); err != nil {
+			// Rollback: delete challenge (tasks cascade)
+			s.repo.Challenge().Delete(challenge.ID)
+			return nil, err
+		}
+	}
+
+	return challenge, nil
+}

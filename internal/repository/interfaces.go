@@ -73,6 +73,36 @@ type SuperAdminRepository interface {
 	Exists(telegramID int64) (bool, error)
 }
 
+// TemplateRepository defines methods for template data access
+type TemplateRepository interface {
+	Create(template *domain.Template) error
+	GetByID(id int64) (*domain.Template, error)
+	GetAll() ([]*domain.Template, error)
+	Delete(id int64) error
+	Count() (int, error)
+	ExistsByName(name string) (bool, error)
+	UpdateName(id int64, name string) error
+	UpdateDescription(id int64, description string) error
+	UpdateDailyLimit(id int64, limit int) error
+	UpdateHideFutureTasks(id int64, hide bool) error
+}
+
+// TemplateTaskRepository defines methods for template task data access
+type TemplateTaskRepository interface {
+	Create(task *domain.TemplateTask) error
+	GetByID(id int64) (*domain.TemplateTask, error)
+	GetByTemplateID(templateID int64) ([]*domain.TemplateTask, error)
+	DeleteByTemplateID(templateID int64) error
+	CountByTemplateID(templateID int64) (int, error)
+	Delete(id int64) error
+	UpdateTitle(id int64, title string) error
+	UpdateDescription(id int64, description string) error
+	UpdateImage(id int64, imageFileID string) error
+	GetMaxOrderNum(templateID int64) (int, error)
+	UpdateOrderNum(id int64, orderNum int) error
+	UpdateOrderNums(templateID int64, updates map[int64]int) error
+}
+
 // Repository combines all repositories
 type Repository interface {
 	Challenge() ChallengeRepository
@@ -81,5 +111,7 @@ type Repository interface {
 	Completion() CompletionRepository
 	State() StateRepository
 	SuperAdmin() SuperAdminRepository
+	Template() TemplateRepository
+	TemplateTask() TemplateTaskRepository
 	Close() error
 }

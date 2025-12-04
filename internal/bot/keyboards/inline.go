@@ -267,9 +267,9 @@ func AdminPanel(dailyLimit int, hideFutureTasks bool, isObserverMode bool) *tele
 	// Hide future tasks button
 	var hideText string
 	if hideFutureTasks {
-		hideText = "👁 Tasks: Sequential"
+		hideText = "👁 Mode: Sequential"
 	} else {
-		hideText = "👁 Tasks: All Visible"
+		hideText = "👁 Mode: All Visible"
 	}
 	hideBtn := menu.Data(hideText, "toggle_hide_future")
 
@@ -553,11 +553,14 @@ func SuperAdminMenu() *tele.ReplyMarkup {
 	allChallengesBtn := menu.Data("👁 Other Challenges", "sa_all_challenges")
 	grantBtn := menu.Data("➕ Grant Super Admin", "sa_grant")
 	manageBtn := menu.Data("👑 Manage Admins", "sa_manage")
+	templatesAddBtn := menu.Data("📋 Templates Add", "sa_templates_add")
+	templatesEditBtn := menu.Data("✏️ Templates Edit", "sa_templates_edit")
 	backBtn := menu.Data("⬅️ Back", "exit_challenge")
 
 	menu.Inline(
 		menu.Row(allChallengesBtn),
 		menu.Row(grantBtn, manageBtn),
+		menu.Row(templatesAddBtn, templatesEditBtn),
 		menu.Row(backBtn),
 	)
 	return menu
@@ -643,5 +646,371 @@ func BackToSuperAdmin() *tele.ReplyMarkup {
 	menu := &tele.ReplyMarkup{}
 	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
 	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// ChallengeListForTemplate - List challenges for super admin to select for template creation
+func ChallengeListForTemplate(
+	challenges []*domain.Challenge,
+	taskCounts map[string]int,
+) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, ch := range challenges {
+		tasks := taskCounts[ch.ID]
+		text := fmt.Sprintf("%s (%d tasks)", ch.Name, tasks)
+		btn := menu.Data(text, "sa_tpl_select", ch.ID)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// ChallengeDetailsForTemplate - Show challenge details before creating template
+func ChallengeDetailsForTemplate(challengeID string) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	seeTasksBtn := menu.Data("📋 See Tasks", "sa_tpl_tasks", challengeID)
+	createBtn := menu.Data("✅ Create Template", "sa_tpl_create", challengeID)
+	backBtn := menu.Data("⬅️ Back", "back_to_sa_tpl_add")
+
+	menu.Inline(
+		menu.Row(seeTasksBtn),
+		menu.Row(createBtn, backBtn),
+	)
+	return menu
+}
+
+// TemplateTasksPreviewFromChallenge - View tasks of a challenge (read-only) for template preview
+func TemplateTasksPreviewFromChallenge(tasks []*domain.Task, challengeID string) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, task := range tasks {
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s", task.OrderNum, task.Title),
+			"sa_tpl_task_detail",
+			challengeID,
+			fmt.Sprintf("%d", task.ID),
+		)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "sa_tpl_select", challengeID)
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// TemplatesDeleteList - List templates for deletion
+func TemplatesDeleteList(templates []*domain.Template, taskCounts map[int64]int) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, tpl := range templates {
+		tasks := taskCounts[tpl.ID]
+		text := fmt.Sprintf("%s (%d tasks)", tpl.Name, tasks)
+		btn := menu.Data(text, "sa_tpl_del_select", fmt.Sprintf("%d", tpl.ID))
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// DeleteTemplateConfirm - Confirm template deletion
+func DeleteTemplateConfirm(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	confirmBtn := menu.Data("🗑 Yes, delete", "sa_tpl_del_confirm", fmt.Sprintf("%d", templateID))
+	cancelBtn := menu.Data("❌ Cancel", "back_to_sa_tpl_del")
+
+	menu.Inline(menu.Row(confirmBtn, cancelBtn))
+	return menu
+}
+
+// TemplateOrScratchChoice - Choose to use template or create from scratch
+func TemplateOrScratchChoice() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	templateBtn := menu.Data("📋 Use Template", "use_template")
+	scratchBtn := menu.Data("✨ From Scratch", "from_scratch")
+	cancelBtn := menu.Data("❌ Cancel", "cancel")
+
+	menu.Inline(
+		menu.Row(templateBtn, scratchBtn),
+		menu.Row(cancelBtn),
+	)
+	return menu
+}
+
+// TemplatesList - List available templates for user selection
+func TemplatesList(templates []*domain.Template, taskCounts map[int64]int) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, tpl := range templates {
+		tasks := taskCounts[tpl.ID]
+		text := fmt.Sprintf("%s (%d tasks)", tpl.Name, tasks)
+		btn := menu.Data(text, "tpl_select", fmt.Sprintf("%d", tpl.ID))
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_tpl_choice")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// TemplateDetails - Show template details for user
+func TemplateDetails(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	seeTasksBtn := menu.Data("📋 See Tasks", "tpl_tasks", fmt.Sprintf("%d", templateID))
+	createBtn := menu.Data("✅ Create from Template", "tpl_create", fmt.Sprintf("%d", templateID))
+	backBtn := menu.Data("⬅️ Back", "back_to_tpl_list")
+
+	menu.Inline(
+		menu.Row(seeTasksBtn),
+		menu.Row(createBtn, backBtn),
+	)
+	return menu
+}
+
+// TemplateTasksList - View template tasks (read-only)
+func TemplateTasksList(tasks []*domain.TemplateTask, templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, task := range tasks {
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s", task.OrderNum, task.Title),
+			"tpl_task_detail",
+			fmt.Sprintf("%d", templateID),
+			fmt.Sprintf("%d", task.ID),
+		)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "tpl_select", fmt.Sprintf("%d", templateID))
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// SkipTemplateSyncTime creates the keyboard for sync time step during template-based challenge creation
+func SkipTemplateSyncTime() *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	skipBtn := menu.Data("⏭ Skip (use server time)", "skip_template_sync_time")
+	cancelBtn := menu.Data("❌ Cancel", "cancel")
+	menu.Inline(menu.Row(skipBtn, cancelBtn))
+	return menu
+}
+
+// BackToSATplTasks - Back button from super admin task detail view
+func BackToSATplTasks(challengeID string) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back", "sa_tpl_tasks", challengeID)
+	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// BackToTplTasks - Back button from user template task detail view
+func BackToTplTasks(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back", "tpl_tasks", fmt.Sprintf("%d", templateID))
+	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// TemplatesEditList - List templates for editing
+func TemplatesEditList(templates []*domain.Template, taskCounts map[int64]int) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, tpl := range templates {
+		tasks := taskCounts[tpl.ID]
+		text := fmt.Sprintf("%s (%d tasks)", tpl.Name, tasks)
+		btn := menu.Data(text, "sa_tpl_edit_select", fmt.Sprintf("%d", tpl.ID))
+		rows = append(rows, menu.Row(btn))
+	}
+
+	backBtn := menu.Data("⬅️ Back", "back_to_super_admin")
+	rows = append(rows, menu.Row(backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// TemplateAdminPanel creates the admin panel keyboard for templates
+func TemplateAdminPanel(templateID int64, dailyLimit int, hideFutureTasks bool) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	addTaskBtn := menu.Data("➕ Add Task", "sa_tpl_add_task", fmt.Sprintf("%d", templateID))
+	editTasksBtn := menu.Data("📋 Edit Tasks", "sa_tpl_edit_tasks", fmt.Sprintf("%d", templateID))
+	editNameBtn := menu.Data("✏️ Name", "sa_tpl_edit_name", fmt.Sprintf("%d", templateID))
+	editDescBtn := menu.Data("📝 Description", "sa_tpl_edit_desc", fmt.Sprintf("%d", templateID))
+
+	// Daily limit button with current value
+	var limitText string
+	if dailyLimit <= 0 {
+		limitText = "🕓 Daily Limit: ∞"
+	} else {
+		limitText = fmt.Sprintf("🕓 Daily Limit: %d", dailyLimit)
+	}
+	limitBtn := menu.Data(limitText, "sa_tpl_edit_limit", fmt.Sprintf("%d", templateID))
+
+	// Hide future tasks button
+	var hideText string
+	if hideFutureTasks {
+		hideText = "👁 Mode: Sequential"
+	} else {
+		hideText = "👁 Mode: All Visible"
+	}
+	hideBtn := menu.Data(hideText, "sa_tpl_toggle_hide", fmt.Sprintf("%d", templateID))
+
+	deleteBtn := menu.Data("🗑 Delete Template", "sa_tpl_del_select", fmt.Sprintf("%d", templateID))
+	backBtn := menu.Data("⬅️ Back", "back_to_sa_tpl_edit")
+
+	menu.Inline(
+		menu.Row(addTaskBtn, editTasksBtn),
+		menu.Row(editNameBtn, editDescBtn),
+		menu.Row(limitBtn, hideBtn),
+		menu.Row(deleteBtn, backBtn),
+	)
+	return menu
+}
+
+// EditTemplateTasksList creates the edit tasks list keyboard for templates
+func EditTemplateTasksList(tasks []*domain.TemplateTask, templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, task := range tasks {
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s ✏️", task.OrderNum, task.Title),
+			"sa_tpl_edit_task",
+			fmt.Sprintf("%d", templateID),
+			fmt.Sprintf("%d", task.ID),
+		)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	reorderBtn := menu.Data("🔀 Reorder Tasks", "sa_tpl_reorder", fmt.Sprintf("%d", templateID))
+	backBtn := menu.Data("⬅️ Back", "sa_tpl_edit_select", fmt.Sprintf("%d", templateID))
+	rows = append(rows, menu.Row(reorderBtn, backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// EditTemplateTask creates the edit task keyboard for template tasks
+func EditTemplateTask(templateID, taskID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+
+	editTitleBtn := menu.Data("📝 Edit Title", "sa_tpl_task_title", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	editImageBtn := menu.Data("📷 Change Image", "sa_tpl_task_image", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	editDescBtn := menu.Data("📄 Edit Description", "sa_tpl_task_desc", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	deleteBtn := menu.Data("🗑 Delete Task", "sa_tpl_task_delete", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	backBtn := menu.Data("⬅️ Back", "sa_tpl_edit_tasks", fmt.Sprintf("%d", templateID))
+
+	menu.Inline(
+		menu.Row(editTitleBtn, editImageBtn),
+		menu.Row(editDescBtn),
+		menu.Row(deleteBtn, backBtn),
+	)
+	return menu
+}
+
+// DeleteTemplateTaskConfirm creates delete template task confirmation keyboard
+func DeleteTemplateTaskConfirm(templateID, taskID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	confirmBtn := menu.Data("✅ Yes, delete", "sa_tpl_task_del_confirm", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	cancelBtn := menu.Data("❌ Cancel", "sa_tpl_edit_task", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID))
+	menu.Inline(menu.Row(confirmBtn, cancelBtn))
+	return menu
+}
+
+// ReorderTemplateTasksList creates the reorder tasks list keyboard for templates
+func ReorderTemplateTasksList(tasks []*domain.TemplateTask, templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for _, task := range tasks {
+		btn := menu.Data(
+			fmt.Sprintf("%d. %s", task.OrderNum, task.Title),
+			"sa_tpl_reorder_select",
+			fmt.Sprintf("%d", templateID),
+			fmt.Sprintf("%d", task.ID),
+		)
+		rows = append(rows, menu.Row(btn))
+	}
+
+	randomizeBtn := menu.Data("🎲 Randomize", "sa_tpl_randomize", fmt.Sprintf("%d", templateID))
+	backBtn := menu.Data("⬅️ Back", "sa_tpl_edit_tasks", fmt.Sprintf("%d", templateID))
+	rows = append(rows, menu.Row(randomizeBtn, backBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// ReorderTemplatePositions creates position selection keyboard for template task reordering
+func ReorderTemplatePositions(templateID, taskID int64, totalTasks, currentPos int) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	rows := make([]tele.Row, 0)
+
+	for i := 1; i <= totalTasks; i++ {
+		var btn tele.Btn
+		if i == currentPos {
+			btn = menu.Data(fmt.Sprintf("   Current position: %d", i), "noop")
+		} else if i < currentPos {
+			btn = menu.Data(fmt.Sprintf("⬆️ Move to position %d", i), "sa_tpl_reorder_move", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID), fmt.Sprintf("%d", i))
+		} else {
+			btn = menu.Data(fmt.Sprintf("⬇️ Move to position %d", i), "sa_tpl_reorder_move", fmt.Sprintf("%d", templateID), fmt.Sprintf("%d", taskID), fmt.Sprintf("%d", i))
+		}
+		rows = append(rows, menu.Row(btn))
+	}
+
+	cancelBtn := menu.Data("❌ Cancel", "sa_tpl_reorder", fmt.Sprintf("%d", templateID))
+	rows = append(rows, menu.Row(cancelBtn))
+
+	menu.Inline(rows...)
+	return menu
+}
+
+// AddTemplateTaskDone creates the keyboard after adding a task to a template
+func AddTemplateTaskDone(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	addAnotherBtn := menu.Data("➕ Add Another Task", "sa_tpl_add_task", fmt.Sprintf("%d", templateID))
+	doneBtn := menu.Data("✅ Done Adding Tasks", "sa_tpl_edit_select", fmt.Sprintf("%d", templateID))
+	menu.Inline(menu.Row(addAnotherBtn), menu.Row(doneBtn))
+	return menu
+}
+
+// BackToTemplateAdmin creates a back to template admin keyboard
+func BackToTemplateAdmin(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	backBtn := menu.Data("⬅️ Back to Admin", "sa_tpl_edit_select", fmt.Sprintf("%d", templateID))
+	menu.Inline(menu.Row(backBtn))
+	return menu
+}
+
+// ReorderTemplateDone creates the keyboard after successful template task reorder
+func ReorderTemplateDone(templateID int64) *tele.ReplyMarkup {
+	menu := &tele.ReplyMarkup{}
+	moveAnotherBtn := menu.Data("🔀 Move Another", "sa_tpl_reorder", fmt.Sprintf("%d", templateID))
+	doneBtn := menu.Data("⬅️ Done", "sa_tpl_edit_tasks", fmt.Sprintf("%d", templateID))
+	menu.Inline(menu.Row(moveAnotherBtn, doneBtn))
 	return menu
 }

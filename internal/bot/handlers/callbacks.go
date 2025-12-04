@@ -42,15 +42,25 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 
 	// State-dependent callbacks that should NOT reset state
 	stateDependentActions := map[string]bool{
-		"select_emoji":           true,
-		"skip":                   true,
-		"skip_name":              true,
-		"skip_daily_limit":       true,
-		"skip_creator_sync_time": true,
-		"skip_sync_time":         true,
-		"hide_future_yes":        true,
-		"hide_future_no":         true,
-		"cancel":                 true,
+		"select_emoji":            true,
+		"skip":                    true,
+		"skip_name":               true,
+		"skip_daily_limit":        true,
+		"skip_creator_sync_time":  true,
+		"skip_sync_time":          true,
+		"skip_template_sync_time": true,
+		"hide_future_yes":         true,
+		"hide_future_no":          true,
+		"cancel":                  true,
+		// Template flow state-dependent actions
+		"use_template":       true,
+		"from_scratch":       true,
+		"tpl_select":         true,
+		"tpl_tasks":          true,
+		"tpl_task_detail":    true,
+		"tpl_create":         true,
+		"back_to_tpl_list":   true,
+		"back_to_tpl_choice": true,
 	}
 
 	// Reset state for non-state-dependent callbacks (user clicked a different button)
@@ -93,6 +103,34 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 		"sa_back_to_observer":   true,
 		"back_to_super_admin":   true,
 		"back_to_sa_challenges": true,
+		// Template management (super admin only)
+		"sa_templates_add":         true,
+		"sa_templates_edit":        true,
+		"sa_tpl_select":            true,
+		"sa_tpl_tasks":             true,
+		"sa_tpl_task_detail":       true,
+		"sa_tpl_create":            true,
+		"sa_tpl_del_select":        true,
+		"sa_tpl_del_confirm":       true,
+		"back_to_sa_tpl_add":       true,
+		"back_to_sa_tpl_edit":      true,
+		"sa_tpl_edit_select":       true,
+		"sa_tpl_add_task":          true,
+		"sa_tpl_edit_tasks":        true,
+		"sa_tpl_edit_task":         true,
+		"sa_tpl_edit_name":         true,
+		"sa_tpl_edit_desc":         true,
+		"sa_tpl_edit_limit":        true,
+		"sa_tpl_toggle_hide":       true,
+		"sa_tpl_task_title":        true,
+		"sa_tpl_task_desc":         true,
+		"sa_tpl_task_image":        true,
+		"sa_tpl_task_delete":       true,
+		"sa_tpl_task_del_confirm":  true,
+		"sa_tpl_reorder":           true,
+		"sa_tpl_reorder_select":    true,
+		"sa_tpl_reorder_move":      true,
+		"sa_tpl_randomize":         true,
 	}
 
 	// Cache super admin check to avoid duplicate DB queries
@@ -346,6 +384,138 @@ func (h *Handler) HandleCallback(c tele.Context) error {
 	case "back_to_sa_challenges":
 		return h.showAllChallengesObserver(c)
 
+	// Super Admin Template actions
+	case "sa_templates_add":
+		return h.showTemplatesAddPanel(c)
+	case "sa_templates_edit":
+		return h.showTemplatesEditPanel(c)
+	case "sa_tpl_select":
+		if len(parts) > 1 {
+			return h.showChallengeDetailsForTemplate(c, parts[1])
+		}
+	case "sa_tpl_tasks":
+		if len(parts) > 1 {
+			return h.showTemplateTasksPreview(c, parts[1])
+		}
+	case "sa_tpl_create":
+		if len(parts) > 1 {
+			return h.handleCreateTemplate(c, parts[1])
+		}
+	case "sa_tpl_task_detail":
+		if len(parts) > 2 {
+			return h.showSATplTaskDetail(c, parts[1], parts[2])
+		}
+	case "sa_tpl_del_select":
+		if len(parts) > 1 {
+			return h.handleDeleteTemplateSelect(c, parts[1])
+		}
+	case "sa_tpl_del_confirm":
+		if len(parts) > 1 {
+			return h.handleConfirmDeleteTemplate(c, parts[1])
+		}
+	case "back_to_sa_tpl_add":
+		return h.showTemplatesAddPanel(c)
+	case "back_to_sa_tpl_edit":
+		return h.showTemplatesEditPanel(c)
+
+	// Super Admin Template Edit actions
+	case "sa_tpl_edit_select":
+		if len(parts) > 1 {
+			return h.showTemplateAdminPanel(c, parts[1])
+		}
+	case "sa_tpl_add_task":
+		if len(parts) > 1 {
+			return h.handleAddTemplateTask(c, parts[1])
+		}
+	case "sa_tpl_edit_tasks":
+		if len(parts) > 1 {
+			return h.showEditTemplateTasksList(c, parts[1])
+		}
+	case "sa_tpl_edit_task":
+		if len(parts) > 2 {
+			return h.showEditTemplateTask(c, parts[1], parts[2])
+		}
+	case "sa_tpl_edit_name":
+		if len(parts) > 1 {
+			return h.handleEditTemplateName(c, parts[1])
+		}
+	case "sa_tpl_edit_desc":
+		if len(parts) > 1 {
+			return h.handleEditTemplateDescription(c, parts[1])
+		}
+	case "sa_tpl_edit_limit":
+		if len(parts) > 1 {
+			return h.handleEditTemplateDailyLimit(c, parts[1])
+		}
+	case "sa_tpl_toggle_hide":
+		if len(parts) > 1 {
+			return h.handleToggleTemplateHideFutureTasks(c, parts[1])
+		}
+	case "sa_tpl_task_title":
+		if len(parts) > 2 {
+			return h.handleEditTplTaskTitle(c, parts[1], parts[2])
+		}
+	case "sa_tpl_task_desc":
+		if len(parts) > 2 {
+			return h.handleEditTplTaskDescription(c, parts[1], parts[2])
+		}
+	case "sa_tpl_task_image":
+		if len(parts) > 2 {
+			return h.handleEditTplTaskImage(c, parts[1], parts[2])
+		}
+	case "sa_tpl_task_delete":
+		if len(parts) > 2 {
+			return h.handleDeleteTemplateTask(c, parts[1], parts[2])
+		}
+	case "sa_tpl_task_del_confirm":
+		if len(parts) > 2 {
+			return h.handleConfirmDeleteTemplateTask(c, parts[1], parts[2])
+		}
+	case "sa_tpl_reorder":
+		if len(parts) > 1 {
+			return h.showReorderTemplateTasksList(c, parts[1])
+		}
+	case "sa_tpl_reorder_select":
+		if len(parts) > 2 {
+			return h.handleTplReorderSelect(c, parts[1], parts[2])
+		}
+	case "sa_tpl_reorder_move":
+		if len(parts) > 3 {
+			return h.handleTplReorderMove(c, parts[1], parts[2], parts[3])
+		}
+	case "sa_tpl_randomize":
+		if len(parts) > 1 {
+			return h.handleTplRandomize(c, parts[1])
+		}
+
+	// User Template selection actions
+	case "use_template":
+		return h.showTemplatesList(c)
+	case "from_scratch":
+		return h.handleFromScratch(c)
+	case "tpl_select":
+		if len(parts) > 1 {
+			return h.showTemplateDetails(c, parts[1])
+		}
+	case "tpl_tasks":
+		if len(parts) > 1 {
+			return h.showTemplateTasksList(c, parts[1])
+		}
+	case "tpl_task_detail":
+		if len(parts) > 2 {
+			return h.showTplTaskDetail(c, parts[1], parts[2])
+		}
+	case "tpl_create":
+		if len(parts) > 1 {
+			return h.handleCreateFromTemplate(c, parts[1])
+		}
+	case "back_to_tpl_choice":
+		return h.showTemplateOrScratchChoice(c)
+	case "back_to_tpl_list":
+		return h.showTemplatesList(c)
+	case "skip_template_sync_time":
+		return h.skipTemplateSyncTime(c)
+
 	// No-op (disabled buttons)
 	case "noop":
 		logger.Debug("noop callback", "user_id", userID)
@@ -371,6 +541,8 @@ func (h *Handler) handleEmojiSelection(c tele.Context, emoji string) error {
 		return h.processParticipantEmoji(c, emoji)
 	case domain.StateAwaitingNewEmoji:
 		return h.processNewEmoji(c, emoji)
+	case domain.StateAwaitingTemplateCreatorEmoji:
+		return h.processTemplateCreatorEmoji(c, emoji)
 	}
 
 	return nil
@@ -388,10 +560,19 @@ func (h *Handler) handleCancel(c tele.Context) error {
 		return h.showSuperAdminMenu(c)
 	}
 
-	// Check if we're in join flow (has temp data with challenge_id but not yet a participant)
+	// Check temp data for template/join flow detection
 	var tempData map[string]any
 	h.state.GetTempData(userID, &tempData)
 	if tempData != nil {
+		// Check if we're in template editing flow
+		if templateID, hasTemplate := tempData[TempKeyTemplateID]; hasTemplate {
+			// In template editing flow - go back to template admin panel
+			h.state.Reset(userID)
+			if tid, ok := templateID.(float64); ok {
+				return h.showTemplateAdminPanel(c, fmt.Sprintf("%d", int64(tid)))
+			}
+			return h.showTemplatesEditPanel(c)
+		}
 		if _, hasChallenge := tempData[TempKeyChallengeID]; hasChallenge {
 			// In join flow - just go back to start menu
 			h.state.Reset(userID)
@@ -505,6 +686,11 @@ func (h *Handler) handleSkip(c tele.Context) error {
 		return h.skipTaskImage(c)
 	case domain.StateAwaitingTaskDescription:
 		return h.skipTaskDescription(c)
+	// Template task states
+	case domain.StateAwaitingTplTaskImage:
+		return h.skipTplTaskImage(c)
+	case domain.StateAwaitingTplTaskDescription:
+		return h.skipTplTaskDescription(c)
 	}
 
 	return nil

@@ -42,9 +42,9 @@ func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 		msg += "<b>Daily Limit:</b> No daily limit\n"
 	}
 	if challenge.HideFutureTasks {
-		msg += "<b>Tasks:</b> Sequential mode\n"
+		msg += "<b>Mode:</b> Sequential\n"
 	} else {
-		msg += "<b>Tasks:</b> All tasks visible\n"
+		msg += "<b>Mode:</b> All Visible\n"
 	}
 
 	return c.Send(
