@@ -1,0 +1,6 @@
+[vars]
+docker_tag = "0.2.0"
+
+[tasks.build-push]
+description = "Build and push the Docker image"
+run = 'docker buildx build --platform linux/amd64 . -t rgeraskin/squad-challenge-bot:{{vars.docker_tag}} --push --builder all-platform'

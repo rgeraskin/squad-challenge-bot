@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.2.0] - 2025-12-05
 
 ### Added
 - **Templates System**: Super admins can now create reusable challenge templates
@@ -13,19 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Add, edit, delete, and reorder template tasks
   - Randomize task order in templates
   - Users can create new challenges from templates
-- Template service tests with 21 test cases
+- **Super Admin system**
+  - View all challenges in the system
+  - Observer mode for any challenge
+  - Modify settings for any challenge
+  - Grant/revoke super admin privileges
+- Skip button for join name input (allows joining without setting a custom name)
 
 ### Changed
 - Renamed "Tasks: Sequential mode" to "Mode: Sequential" in admin panel for clarity
-- Template Admin Panel now matches Challenge Admin Panel format
+- Increased character limit for task descriptions from 400 to 800 characters
 
-### Fixed
-- Template task reordering now works correctly (uses batch updates to avoid unique constraint violations)
-- Template task randomization now works correctly
-- Skip and Cancel buttons now properly route back to template editing flow
-- Template task images are now properly copied when creating template from challenge
-
-## [1.0.0] - 2024
+## [0.1.0] - 2025-12-01
 
 ### Added
 - Challenge creation with customizable settings
@@ -36,11 +35,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Team progress visualization with leaderboard
 - Deep link support for sharing challenges
 - Notification system for task completions
-- Super Admin system
-  - View all challenges in the system
-  - Observer mode for any challenge
-  - Modify settings for any challenge
-  - Grant/revoke super admin privileges
 - Admin controls for challenge owners
   - Rename challenges
   - Edit task details

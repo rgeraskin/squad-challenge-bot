@@ -79,9 +79,12 @@ docker-compose up -d
 
 ```
 .
-├── cmd/bot/              # Application entry point
+├── cmd/
+│   ├── bot/              # Application entry point
+│   └── migrate-images/   # Image migration utility
 ├── internal/
 │   ├── bot/              # Bot setup and routing
+│   │   ├── assets/       # Embedded assets (GIFs, images)
 │   │   ├── handlers/     # Message and callback handlers
 │   │   ├── keyboards/    # Inline keyboard builders
 │   │   └── views/        # Message formatters
@@ -92,6 +95,7 @@ docker-compose up -d
 │   │   └── sqlite/       # SQLite implementation
 │   ├── service/          # Business logic
 │   └── util/             # Utilities (ID generation, emoji validation)
+├── data/                 # SQLite database files
 └── testutil/             # Test helpers
 ```
 
@@ -110,25 +114,16 @@ go test ./internal/service/... -v
 
 ### Test Coverage
 
-| Package | Coverage |
-|---------|----------|
-| service | 70% |
-| repository/sqlite | 58% |
-| bot/views | 57% |
-| util | 96% |
+| Package           | Coverage |
+|-------------------|----------|
+| service           | 70%      |
+| repository/sqlite | 58%      |
+| bot/views         | 57%      |
+| util              | 96%      |
 
 ## Bot Commands
 
 - `/start` - Show main menu or join via deep link
-- `/help` - Show help message
-
-## User Flows
-
-1. **Create Challenge**: Enter name → Description (optional) → Display name → Pick emoji → Daily limit → Sequential mode → Sync time
-2. **Join Challenge**: Enter challenge ID → Display name → Pick emoji → Sync time
-3. **Complete Tasks**: Tap task → Mark complete/incomplete (respects daily limits and sequential mode)
-4. **View Progress**: See team progress with visual progress bars
-5. **Admin Settings**: Edit name/description, set daily limits, toggle sequential mode, manage tasks
 
 ## Super Admin
 
@@ -149,6 +144,20 @@ The bot exposes health check endpoints:
 - `GET /health` - Liveness probe
 - `GET /ready` - Readiness probe
 
+## Roadmap
+
+[x] tg nickname as display name (v0.2.0)
+[x] super admin (v0.2.0)
+[x] templates for challenges (v0.2.0)
+[ ] translations
+[ ] support button
+[ ] menu button
+[ ] squad chat
+[ ] notifications:
+    [ ] broadcast notifications
+    [ ] send notifications to remember to complete tasks
+    [ ] achivements
+[ ] telegram mini app
 ## License
 
-MIT
+GPL-3.0
