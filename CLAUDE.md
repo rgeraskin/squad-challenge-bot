@@ -92,6 +92,7 @@ Migrations in `repository/sqlite/migrations/` are embedded and run in order on s
 - Max 10 challenges per user (`MaxChallengesPerUser`)
 - Max 50 participants per challenge (`MaxParticipants`)
 - Max 50 tasks per challenge (`MaxTasksPerChallenge`)
+- Task titles: max 150 characters (`MaxTaskTitleLength`)
 - Task descriptions: max 1200 characters (`MaxTaskDescriptionLength`)
 
 **Other Constraints**:

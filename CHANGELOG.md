@@ -8,8 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Increased max participants per challenge from 10 to 50
+- Increased task title character limit from 100 to 150
 - Increased task description character limit from 800 to 1200
-- Centralized business logic limits (MaxParticipants, MaxTasksPerChallenge, MaxChallengesPerUser, MaxTaskDescriptionLength) in `internal/domain/limits.go` for easier configuration
+- Centralized business logic limits (MaxParticipants, MaxTasksPerChallenge, MaxChallengesPerUser, MaxTaskTitleLength, MaxTaskDescriptionLength) in `internal/domain/limits.go` for easier configuration
 
 ## [0.2.0] - 2025-12-05
 

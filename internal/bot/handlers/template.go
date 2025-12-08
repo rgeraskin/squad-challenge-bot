@@ -929,8 +929,11 @@ func (h *Handler) handleAddTemplateTask(c tele.Context, templateIDStr string) er
 func (h *Handler) processTplTaskTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
-	if len(title) == 0 || len(title) > 100 {
-		return c.Send("😬 Keep it between 1-100 characters!", keyboards.CancelOnly())
+	if len(title) == 0 || len(title) > domain.MaxTaskTitleLength {
+		return c.Send(
+			fmt.Sprintf("😬 Keep it between 1-%d characters!", domain.MaxTaskTitleLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	var tempData map[string]interface{}
@@ -1090,8 +1093,11 @@ func (h *Handler) handleEditTplTaskTitle(c tele.Context, templateIDStr, taskIDSt
 func (h *Handler) processTplEditTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
-	if len(title) == 0 || len(title) > 100 {
-		return c.Send("😬 Keep it between 1-100 characters!", keyboards.CancelOnly())
+	if len(title) == 0 || len(title) > domain.MaxTaskTitleLength {
+		return c.Send(
+			fmt.Sprintf("😬 Keep it between 1-%d characters!", domain.MaxTaskTitleLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	var tempData map[string]interface{}

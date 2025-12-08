@@ -31,8 +31,11 @@ func (h *Handler) handleAddTask(c tele.Context) error {
 func (h *Handler) processTaskTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
-	if len(title) == 0 || len(title) > 100 {
-		return c.Send("😅 Keep it between 1-100 characters:", keyboards.CancelOnly())
+	if len(title) == 0 || len(title) > domain.MaxTaskTitleLength {
+		return c.Send(
+			fmt.Sprintf("😅 Keep it between 1-%d characters:", domain.MaxTaskTitleLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	tempData := map[string]interface{}{
@@ -173,8 +176,11 @@ func (h *Handler) handleEditTaskTitle(c tele.Context, taskIDStr string) error {
 func (h *Handler) processEditTitle(c tele.Context, title string) error {
 	userID := c.Sender().ID
 
-	if len(title) == 0 || len(title) > 100 {
-		return c.Send("😅 Keep it between 1-100 characters:", keyboards.CancelOnly())
+	if len(title) == 0 || len(title) > domain.MaxTaskTitleLength {
+		return c.Send(
+			fmt.Sprintf("😅 Keep it between 1-%d characters:", domain.MaxTaskTitleLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	var tempData map[string]any
