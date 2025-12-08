@@ -10,4 +10,7 @@ const (
 
 	// MaxTasksPerChallenge is the maximum number of tasks allowed per challenge
 	MaxTasksPerChallenge = 50
+
+	// MaxTaskDescriptionLength is the maximum character length for task descriptions
+	MaxTaskDescriptionLength = 1200
 )

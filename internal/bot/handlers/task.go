@@ -65,8 +65,11 @@ func (h *Handler) skipTaskImage(c tele.Context) error {
 
 // processTaskDescription processes task description input
 func (h *Handler) processTaskDescription(c tele.Context, description string) error {
-	if len(description) > 800 {
-		return c.Send("😅 That's a bit long! Keep it under 800 characters:", keyboards.SkipCancel())
+	if len(description) > domain.MaxTaskDescriptionLength {
+		return c.Send(
+			fmt.Sprintf("😅 That's a bit long! Keep it under %d characters:", domain.MaxTaskDescriptionLength),
+			keyboards.SkipCancel(),
+		)
 	}
 
 	return h.createTask(c, description)
@@ -215,8 +218,11 @@ func (h *Handler) handleEditTaskDescription(c tele.Context, taskIDStr string) er
 func (h *Handler) processEditDescription(c tele.Context, description string) error {
 	userID := c.Sender().ID
 
-	if len(description) > 800 {
-		return c.Send("😅 That's a bit long! Keep it under 800 characters:", keyboards.CancelOnly())
+	if len(description) > domain.MaxTaskDescriptionLength {
+		return c.Send(
+			fmt.Sprintf("😅 That's a bit long! Keep it under %d characters:", domain.MaxTaskDescriptionLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	var tempData map[string]any

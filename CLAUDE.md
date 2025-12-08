@@ -92,9 +92,9 @@ Migrations in `repository/sqlite/migrations/` are embedded and run in order on s
 - Max 10 challenges per user (`MaxChallengesPerUser`)
 - Max 50 participants per challenge (`MaxParticipants`)
 - Max 50 tasks per challenge (`MaxTasksPerChallenge`)
+- Task descriptions: max 1200 characters (`MaxTaskDescriptionLength`)
 
 **Other Constraints**:
-- Task descriptions: max 800 characters
 - Daily task limit: 1-50 tasks per day (0 = unlimited)
 - Emojis must be unique within a challenge
 - Only challenge creator (admin) can modify tasks/settings

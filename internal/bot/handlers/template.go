@@ -971,8 +971,11 @@ func (h *Handler) skipTplTaskImage(c tele.Context) error {
 
 // processTplTaskDescription processes the description for a new template task
 func (h *Handler) processTplTaskDescription(c tele.Context, description string) error {
-	if len(description) > 800 {
-		return c.Send("😅 That's a bit long! Keep it under 800 characters:", keyboards.SkipCancel())
+	if len(description) > domain.MaxTaskDescriptionLength {
+		return c.Send(
+			fmt.Sprintf("😅 That's a bit long! Keep it under %d characters:", domain.MaxTaskDescriptionLength),
+			keyboards.SkipCancel(),
+		)
 	}
 
 	return h.createTemplateTask(c, description)
@@ -1153,8 +1156,11 @@ func (h *Handler) handleEditTplTaskDescription(
 func (h *Handler) processTplEditDescription(c tele.Context, description string) error {
 	userID := c.Sender().ID
 
-	if len(description) > 800 {
-		return c.Send("😬 Keep it under 800 characters!", keyboards.CancelOnly())
+	if len(description) > domain.MaxTaskDescriptionLength {
+		return c.Send(
+			fmt.Sprintf("😬 Keep it under %d characters!", domain.MaxTaskDescriptionLength),
+			keyboards.CancelOnly(),
+		)
 	}
 
 	var tempData map[string]interface{}
