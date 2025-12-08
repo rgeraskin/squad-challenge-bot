@@ -1,7 +1,7 @@
 services:
   bot:
     build: .
-    image: rgeraskin/squad-challenge-bot:0.2.0
+    image: rgeraskin/squad-challenge-bot:0.2.1
     container_name: squad-challenge-bot
     restart: unless-stopped
     env_file:
