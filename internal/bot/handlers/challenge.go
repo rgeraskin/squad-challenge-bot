@@ -130,7 +130,13 @@ func (h *Handler) handleCreateChallenge(c tele.Context) error {
 	templateCount, _ := h.template.Count()
 	if templateCount > 0 {
 		// Show template or scratch choice
-		logger.Debug("Templates exist, showing choice", "user_id", userID, "template_count", templateCount)
+		logger.Debug(
+			"Templates exist, showing choice",
+			"user_id",
+			userID,
+			"template_count",
+			templateCount,
+		)
 		return h.showTemplateOrScratchChoice(c)
 	}
 
@@ -199,7 +205,11 @@ func (h *Handler) processChallengeDescription(c tele.Context, description string
 	tempData["challenge_description"] = description
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>", keyboards.SkipName(getTelegramName(c)), tele.ModeHTML)
+	return c.Send(
+		"👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>",
+		keyboards.SkipName(getTelegramName(c)),
+		tele.ModeHTML,
+	)
 }
 
 // skipChallengeDescription skips the description step
@@ -211,7 +221,11 @@ func (h *Handler) skipChallengeDescription(c tele.Context) error {
 	tempData["challenge_description"] = ""
 	h.state.SetStateWithData(userID, domain.StateAwaitingCreatorName, tempData)
 
-	return c.Send("👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>", keyboards.SkipName(getTelegramName(c)), tele.ModeHTML)
+	return c.Send(
+		"👤 What should we call you?\n\n<i>Tap Skip to use your Telegram name</i>",
+		keyboards.SkipName(getTelegramName(c)),
+		tele.ModeHTML,
+	)
 }
 
 // processCreatorName processes creator name input during creation
@@ -450,7 +464,7 @@ func (h *Handler) processChallengeID(c tele.Context, id string) error {
 		switch err {
 		case service.ErrChallengeFull:
 			h.state.Reset(userID)
-			return h.sendError(c, "😬 Bummer! This challenge is full (10/10).")
+			return h.sendError(c, "😬 Bummer! This challenge is full (50/50).")
 		case service.ErrAlreadyMember:
 			h.state.Reset(userID)
 			return c.Send("👋 Hey, you're already in this one!")

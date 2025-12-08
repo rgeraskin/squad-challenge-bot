@@ -4,7 +4,7 @@ A Telegram bot for creating and managing team challenges with task tracking and 
 
 ## Features
 
-- **Challenge Management**: Create challenges with up to 50 tasks and 10 participants
+- **Challenge Management**: Create challenges with up to 50 tasks and 50 participants
 - **Task Tracking**: Complete tasks in any order, track progress with visual progress bars
 - **Daily Limits**: Set a daily task limit (1-50 tasks/day) to pace your challenge
 - **Sequential Mode**: Hide future tasks until previous ones are completed

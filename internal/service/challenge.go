@@ -10,7 +10,7 @@ import (
 
 const (
 	MaxChallengesPerUser = 10
-	MaxParticipants      = 10
+	MaxParticipants      = 50
 )
 
 var (
@@ -32,7 +32,12 @@ func NewChallengeService(repo repository.Repository) *ChallengeService {
 }
 
 // Create creates a new challenge
-func (s *ChallengeService) Create(name, description string, creatorID int64, dailyTaskLimit int, hideFutureTasks bool) (*domain.Challenge, error) {
+func (s *ChallengeService) Create(
+	name, description string,
+	creatorID int64,
+	dailyTaskLimit int,
+	hideFutureTasks bool,
+) (*domain.Challenge, error) {
 	// Check max challenges for user
 	challenges, err := s.repo.Challenge().GetByUserID(creatorID)
 	if err != nil {
@@ -95,7 +100,12 @@ func (s *ChallengeService) GetByUserID(telegramID int64) ([]*domain.Challenge, e
 }
 
 // UpdateName updates a challenge's name
-func (s *ChallengeService) UpdateName(id string, name string, userID int64, isSuperAdmin bool) error {
+func (s *ChallengeService) UpdateName(
+	id string,
+	name string,
+	userID int64,
+	isSuperAdmin bool,
+) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
@@ -110,7 +120,12 @@ func (s *ChallengeService) UpdateName(id string, name string, userID int64, isSu
 }
 
 // UpdateDescription updates a challenge's description (admin only)
-func (s *ChallengeService) UpdateDescription(id string, description string, userID int64, isSuperAdmin bool) error {
+func (s *ChallengeService) UpdateDescription(
+	id string,
+	description string,
+	userID int64,
+	isSuperAdmin bool,
+) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
@@ -125,7 +140,12 @@ func (s *ChallengeService) UpdateDescription(id string, description string, user
 }
 
 // UpdateDailyLimit updates a challenge's daily task limit (admin only)
-func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64, isSuperAdmin bool) error {
+func (s *ChallengeService) UpdateDailyLimit(
+	id string,
+	limit int,
+	userID int64,
+	isSuperAdmin bool,
+) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
@@ -139,7 +159,12 @@ func (s *ChallengeService) UpdateDailyLimit(id string, limit int, userID int64, 
 }
 
 // UpdateHideFutureTasks updates the hide future tasks setting (admin only)
-func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID int64, isSuperAdmin bool) error {
+func (s *ChallengeService) UpdateHideFutureTasks(
+	id string,
+	hide bool,
+	userID int64,
+	isSuperAdmin bool,
+) error {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return err
@@ -153,7 +178,11 @@ func (s *ChallengeService) UpdateHideFutureTasks(id string, hide bool, userID in
 }
 
 // ToggleHideFutureTasks toggles the hide future tasks setting and returns new value (admin only)
-func (s *ChallengeService) ToggleHideFutureTasks(id string, userID int64, isSuperAdmin bool) (bool, error) {
+func (s *ChallengeService) ToggleHideFutureTasks(
+	id string,
+	userID int64,
+	isSuperAdmin bool,
+) (bool, error) {
 	challenge, err := s.GetByID(id)
 	if err != nil {
 		return false, err

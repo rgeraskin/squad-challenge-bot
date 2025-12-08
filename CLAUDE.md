@@ -49,7 +49,7 @@ Telegram bot built with Clean Architecture patterns using `gopkg.in/telebot.v3`.
 ### Key Layers
 
 - **handlers/** - Telegram message/callback handlers. Entry point for all user interactions.
-- **service/** - Business logic layer. All domain rules (max 50 tasks, max 10 participants, emoji uniqueness per challenge) are enforced here. Defines sentinel errors like `ErrChallengeNotFound`, `ErrNotAdmin`.
+- **service/** - Business logic layer. All domain rules (max 50 tasks, max 50 participants, emoji uniqueness per challenge) are enforced here. Defines sentinel errors like `ErrChallengeNotFound`, `ErrNotAdmin`.
 - **repository/** - Data access interfaces in `interfaces.go`, SQLite implementation in `sqlite/`. Migrations are embedded via `embed.FS`.
 - **domain/** - Entity definitions with no dependencies.
 
@@ -89,7 +89,7 @@ Migrations in `repository/sqlite/migrations/` are embedded and run in order on s
 ## Key Constraints
 
 - Max 10 challenges per user
-- Max 10 participants per challenge
+- Max 50 participants per challenge
 - Max 50 tasks per challenge
 - Task descriptions: max 800 characters
 - Daily task limit: 1-50 tasks per day (0 = unlimited)

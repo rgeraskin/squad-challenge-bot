@@ -34,7 +34,7 @@ func (h *Handler) showAdminPanel(c tele.Context, challengeID string) error {
 	msg += fmt.Sprintf("<b>Challenge:</b> %s\n", challenge.Name)
 	msg += fmt.Sprintf("<b>Description:</b> %s\n", challenge.Description)
 	msg += fmt.Sprintf("<b>Challenge ID:</b> <code>%s</code>\n", challenge.ID)
-	msg += fmt.Sprintf("<b>Members:</b> %d/10\n", participantCount)
+	msg += fmt.Sprintf("<b>Members:</b> %d/50\n", participantCount)
 	msg += fmt.Sprintf("<b>Tasks:</b> %d\n", taskCount)
 	if challenge.DailyTaskLimit > 0 {
 		msg += fmt.Sprintf("<b>Daily Limit:</b> %d/day\n", challenge.DailyTaskLimit)
@@ -231,7 +231,13 @@ func (h *Handler) handleConfirmDeleteChallenge(c tele.Context) error {
 
 	userState, err := h.state.Get(userID)
 	if err != nil {
-		logger.Error("handleConfirmDeleteChallenge: failed to get state", "user_id", userID, "error", err)
+		logger.Error(
+			"handleConfirmDeleteChallenge: failed to get state",
+			"user_id",
+			userID,
+			"error",
+			err,
+		)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 	challengeID := userState.CurrentChallenge
@@ -242,11 +248,25 @@ func (h *Handler) handleConfirmDeleteChallenge(c tele.Context) error {
 
 	challenge, err := h.challenge.GetByID(challengeID)
 	if err != nil {
-		logger.Error("handleConfirmDeleteChallenge: failed to get challenge", "user_id", userID, "challenge_id", challengeID, "error", err)
+		logger.Error(
+			"handleConfirmDeleteChallenge: failed to get challenge",
+			"user_id",
+			userID,
+			"challenge_id",
+			challengeID,
+			"error",
+			err,
+		)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 	if challenge == nil {
-		logger.Warn("handleConfirmDeleteChallenge: challenge not found", "user_id", userID, "challenge_id", challengeID)
+		logger.Warn(
+			"handleConfirmDeleteChallenge: challenge not found",
+			"user_id",
+			userID,
+			"challenge_id",
+			challengeID,
+		)
 		return h.sendError(c, "😅 Challenge not found. It may have already been deleted.")
 	}
 
@@ -256,12 +276,25 @@ func (h *Handler) handleConfirmDeleteChallenge(c tele.Context) error {
 
 	isSuperAdmin := h.isSuperAdmin(userID)
 	if err := h.challenge.Delete(challengeID, userID, isSuperAdmin); err != nil {
-		logger.Error("handleConfirmDeleteChallenge: failed to delete", "user_id", userID, "challenge_id", challengeID, "error", err)
+		logger.Error(
+			"handleConfirmDeleteChallenge: failed to delete",
+			"user_id",
+			userID,
+			"challenge_id",
+			challengeID,
+			"error",
+			err,
+		)
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 
 	// Notify participants AFTER successful deletion (in background to not block response)
-	go h.notification.NotifyChallengeDeletedAsync(challengeID, challengeName, participantIDs, userID)
+	go h.notification.NotifyChallengeDeletedAsync(
+		challengeID,
+		challengeName,
+		participantIDs,
+		userID,
+	)
 
 	h.state.Reset(userID)
 	c.Send("💨 Poof! Challenge deleted.")

@@ -240,18 +240,25 @@ func TestChallengeService_CanJoin_Full(t *testing.T) {
 
 	challenge, _ := challengeSvc.Create("Test Challenge", "", 10000, 0, false)
 
-	emojis := []string{"💪", "🔥", "⭐", "🎯", "🏆", "🎨", "🎪", "🎭", "🎮", "🎲"}
+	// 50 unique emojis for max participants
+	emojis := []string{
+		"💪", "🔥", "⭐", "🎯", "🏆", "🎨", "🎪", "🎭", "🎮", "🎲",
+		"🎳", "🎰", "🎵", "🎶", "🎹", "🎸", "🎷", "🎺", "🎻", "✨",
+		"🌟", "💫", "🌙", "☀️", "🌈", "🌊", "🌸", "🌺", "🌻", "🌼",
+		"🍀", "🍁", "🍂", "🍃", "🎁", "🎀", "🎊", "🎉", "🎈", "🎄",
+		"⚡", "🌀", "🔮", "🎐", "🔑", "💎", "🔶", "🔷", "🐶", "🐱",
+	}
 
-	// Add 10 participants (max)
+	// Add 50 participants (max)
 	for i := 0; i < MaxParticipants; i++ {
 		userID := int64(10000 + i)
 		participantSvc.Join(challenge.ID, userID, "User", emojis[i], 0)
 	}
 
-	// 11th should fail
+	// 51st should fail
 	err := challengeSvc.CanJoin(challenge.ID, 99999)
 	if err != ErrChallengeFull {
-		t.Errorf("CanJoin() for 11th user: error = %v, want ErrChallengeFull", err)
+		t.Errorf("CanJoin() for 51st user: error = %v, want ErrChallengeFull", err)
 	}
 }
 
@@ -290,7 +297,11 @@ func TestChallengeService_UpdateDescription_SuperAdminOverride(t *testing.T) {
 
 	updated, _ := svc.GetByID(challenge.ID)
 	if updated.Description != "Super Admin Desc" {
-		t.Errorf("UpdateDescription() Description = %q, want %q", updated.Description, "Super Admin Desc")
+		t.Errorf(
+			"UpdateDescription() Description = %q, want %q",
+			updated.Description,
+			"Super Admin Desc",
+		)
 	}
 }
 

@@ -111,7 +111,12 @@ func TestFlow_CompleteTasksProgressively(t *testing.T) {
 			expectedCurrent = 4 // After completing 3, current is 4
 		}
 		if currentTask != expectedCurrent {
-			t.Errorf("After completing task %d, current = %d, want %d", i+1, currentTask, expectedCurrent)
+			t.Errorf(
+				"After completing task %d, current = %d, want %d",
+				i+1,
+				currentTask,
+				expectedCurrent,
+			)
 		}
 	}
 }
@@ -373,11 +378,17 @@ func TestFlow_ChallengeFull(t *testing.T) {
 	creatorID := int64(10000)
 	challengeID := f.CreateChallengeWithTasks(creatorID, "Full Challenge", 3)
 
-	// Different emojis for each participant (emoji uniqueness per challenge)
-	emojis := []string{"🔥", "⭐", "🎯", "🏆", "🎨", "🎪", "🎭", "🎮", "🎲"}
+	// 49 unique emojis for additional participants (creator already has 💪)
+	emojis := []string{
+		"🔥", "⭐", "🎯", "🏆", "🎨", "🎪", "🎭", "🎮", "🎲", "🎳",
+		"🎰", "🎵", "🎶", "🎹", "🎸", "🎷", "🎺", "🎻", "✨", "🌟",
+		"💫", "🌙", "☀️", "🌈", "🌊", "🌸", "🌺", "🌻", "🌼", "🍀",
+		"🍁", "🍂", "🍃", "🎁", "🎀", "🎊", "🎉", "🎈", "🎄", "⚡",
+		"🌀", "🔮", "🎐", "🔑", "💎", "🔶", "🔷", "🐶", "🐱",
+	}
 
-	// Add 9 more participants (total 10 - max)
-	for i := 1; i < 10; i++ {
+	// Add 49 more participants (total 50 - max)
+	for i := 1; i < 50; i++ {
 		userID := int64(10000 + i)
 		_, err := f.Participant.Join(challengeID, userID, "User", emojis[i-1], 0)
 		if err != nil {
@@ -385,15 +396,15 @@ func TestFlow_ChallengeFull(t *testing.T) {
 		}
 	}
 
-	// Verify count is 10
+	// Verify count is 50
 	count, _ := f.Participant.CountByChallengeID(challengeID)
-	if count != 10 {
-		t.Errorf("Participant count = %d, want 10", count)
+	if count != 50 {
+		t.Errorf("Participant count = %d, want 50", count)
 	}
 
-	// 11th participant should fail
+	// 51st participant should fail
 	err := f.Challenge.CanJoin(challengeID, 99999)
 	if err != service.ErrChallengeFull {
-		t.Errorf("CanJoin for 11th participant: error = %v, want ErrChallengeFull", err)
+		t.Errorf("CanJoin for 51st participant: error = %v, want ErrChallengeFull", err)
 	}
 }

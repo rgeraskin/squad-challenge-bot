@@ -61,7 +61,7 @@ func (h *Handler) handleDeepLink(c tele.Context, challengeID string) error {
 	if err := h.challenge.CanJoin(challengeID, userID); err != nil {
 		switch err {
 		case service.ErrChallengeFull:
-			return h.sendError(c, "😬 Bummer! This challenge is full (10/10).")
+			return h.sendError(c, "😬 Bummer! This challenge is full (50/50).")
 		case service.ErrAlreadyMember:
 			h.state.SetCurrentChallenge(userID, challengeID)
 			return h.showMainChallengeView(c, challengeID)

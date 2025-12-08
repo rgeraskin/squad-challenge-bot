@@ -125,7 +125,7 @@ func (h *Handler) showObserverChallengeView(
 		msg += fmt.Sprintf("<i>%s</i>\n", challenge.Description)
 	}
 	msg += fmt.Sprintf("\n📋 Tasks: %d\n", len(tasks))
-	msg += fmt.Sprintf("👥 Participants: %d/10\n", len(participants))
+	msg += fmt.Sprintf("👥 Participants: %d/50\n", len(participants))
 	msg += fmt.Sprintf("🆔 ID: <code>%s</code>\n", challenge.ID)
 	msg += fmt.Sprintf("👤 Creator ID: <code>%d</code>\n", challenge.CreatorID)
 
