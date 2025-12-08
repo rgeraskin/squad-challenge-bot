@@ -51,7 +51,7 @@ Telegram bot built with Clean Architecture patterns using `gopkg.in/telebot.v3`.
 - **handlers/** - Telegram message/callback handlers. Entry point for all user interactions.
 - **service/** - Business logic layer. All domain rules (max 50 tasks, max 50 participants, emoji uniqueness per challenge) are enforced here. Defines sentinel errors like `ErrChallengeNotFound`, `ErrNotAdmin`.
 - **repository/** - Data access interfaces in `interfaces.go`, SQLite implementation in `sqlite/`. Migrations are embedded via `embed.FS`.
-- **domain/** - Entity definitions with no dependencies.
+- **domain/** - Entity definitions with no dependencies. Business logic limits (MaxParticipants, MaxTasksPerChallenge, MaxChallengesPerUser) are centralized in `domain/limits.go` for easy configuration.
 
 ### State Machine
 
@@ -88,9 +88,12 @@ Migrations in `repository/sqlite/migrations/` are embedded and run in order on s
 
 ## Key Constraints
 
-- Max 10 challenges per user
-- Max 50 participants per challenge
-- Max 50 tasks per challenge
+**Business Logic Limits** (configurable in `internal/domain/limits.go`):
+- Max 10 challenges per user (`MaxChallengesPerUser`)
+- Max 50 participants per challenge (`MaxParticipants`)
+- Max 50 tasks per challenge (`MaxTasksPerChallenge`)
+
+**Other Constraints**:
 - Task descriptions: max 800 characters
 - Daily task limit: 1-50 tasks per day (0 = unlimited)
 - Emojis must be unique within a challenge

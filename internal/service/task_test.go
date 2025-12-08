@@ -2,6 +2,8 @@ package service
 
 import (
 	"testing"
+
+	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
 )
 
 func TestTaskService_Create(t *testing.T) {
@@ -115,7 +117,7 @@ func TestTaskService_MaxTasks(t *testing.T) {
 	challenge, _ := challengeSvc.Create("Test Challenge", "", 12345, 0, false)
 
 	// Create 50 tasks (max)
-	for i := 0; i < MaxTasksPerChallenge; i++ {
+	for i := 0; i < domain.MaxTasksPerChallenge; i++ {
 		_, err := taskSvc.Create(challenge.ID, "Task", "", "")
 		if err != nil {
 			t.Fatalf("Create() %d error = %v", i, err)

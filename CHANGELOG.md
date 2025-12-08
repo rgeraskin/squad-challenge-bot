@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - Increased max participants per challenge from 10 to 50
+- Centralized business logic limits (MaxParticipants, MaxTasksPerChallenge, MaxChallengesPerUser) in `internal/domain/limits.go` for easier configuration
 
 ## [0.2.0] - 2025-12-05
 

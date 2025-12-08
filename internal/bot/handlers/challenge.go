@@ -121,7 +121,7 @@ func (h *Handler) handleCreateChallenge(c tele.Context) error {
 		return h.sendError(c, "😅 Oops, something went wrong. Give it another try!")
 	}
 	logger.Debug("User challenges count", "user_id", userID, "count", len(challenges))
-	if len(challenges) >= service.MaxChallengesPerUser {
+	if len(challenges) >= domain.MaxChallengesPerUser {
 		logger.Warn("User reached max challenges", "user_id", userID, "count", len(challenges))
 		return h.sendError(c, "😬 Whoa, you've hit the limit of 10 challenges!")
 	}

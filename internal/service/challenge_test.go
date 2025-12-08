@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rgeraskin/squad-challenge-bot/internal/domain"
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository/sqlite"
 )
 
@@ -105,7 +106,7 @@ func TestChallengeService_MaxChallenges(t *testing.T) {
 	participantSvc := NewParticipantService(repo)
 
 	// Create 10 challenges (max)
-	for i := 0; i < MaxChallengesPerUser; i++ {
+	for i := 0; i < domain.MaxChallengesPerUser; i++ {
 		challenge, err := challengeSvc.Create("Challenge", "", 12345, 0, false)
 		if err != nil {
 			t.Fatalf("Create() %d error = %v", i, err)
@@ -250,7 +251,7 @@ func TestChallengeService_CanJoin_Full(t *testing.T) {
 	}
 
 	// Add 50 participants (max)
-	for i := 0; i < MaxParticipants; i++ {
+	for i := 0; i < domain.MaxParticipants; i++ {
 		userID := int64(10000 + i)
 		participantSvc.Join(challenge.ID, userID, "User", emojis[i], 0)
 	}

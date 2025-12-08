@@ -89,7 +89,7 @@ docker-compose up -d
 │   │   ├── keyboards/    # Inline keyboard builders
 │   │   └── views/        # Message formatters
 │   ├── config/           # Configuration loading
-│   ├── domain/           # Domain entities
+│   ├── domain/           # Domain entities and business logic limits
 │   ├── logger/           # Structured logging
 │   ├── repository/       # Data access layer
 │   │   └── sqlite/       # SQLite implementation

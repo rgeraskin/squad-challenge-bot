@@ -8,11 +8,6 @@ import (
 	"github.com/rgeraskin/squad-challenge-bot/internal/util"
 )
 
-const (
-	MaxChallengesPerUser = 10
-	MaxParticipants      = 50
-)
-
 var (
 	ErrChallengeNotFound    = errors.New("challenge not found")
 	ErrChallengeFull        = errors.New("challenge is full")
@@ -43,7 +38,7 @@ func (s *ChallengeService) Create(
 	if err != nil {
 		return nil, err
 	}
-	if len(challenges) >= MaxChallengesPerUser {
+	if len(challenges) >= domain.MaxChallengesPerUser {
 		return nil, ErrMaxChallengesReached
 	}
 
@@ -247,7 +242,7 @@ func (s *ChallengeService) CanJoin(challengeID string, userID int64) error {
 	if err != nil {
 		return err
 	}
-	if count >= MaxParticipants {
+	if count >= domain.MaxParticipants {
 		return ErrChallengeFull
 	}
 
@@ -266,7 +261,7 @@ func (s *ChallengeService) CreateFromTemplate(
 	if err != nil {
 		return nil, err
 	}
-	if len(challenges) >= MaxChallengesPerUser {
+	if len(challenges) >= domain.MaxChallengesPerUser {
 		return nil, ErrMaxChallengesReached
 	}
 

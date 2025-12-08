@@ -8,8 +8,6 @@ import (
 	"github.com/rgeraskin/squad-challenge-bot/internal/repository"
 )
 
-const MaxTasksPerChallenge = 50
-
 var (
 	ErrTaskNotFound      = errors.New("task not found")
 	ErrMaxTasksReached   = errors.New("maximum tasks reached")
@@ -37,7 +35,7 @@ func (s *TaskService) Create(challengeID, title, description, imageFileID string
 	if err != nil {
 		return nil, err
 	}
-	if count >= MaxTasksPerChallenge {
+	if count >= domain.MaxTasksPerChallenge {
 		return nil, ErrMaxTasksReached
 	}
 

@@ -19,7 +19,7 @@ func (h *Handler) handleAddTask(c tele.Context) error {
 
 	// Check task limit
 	count, _ := h.task.CountByChallengeID(challengeID)
-	if count >= service.MaxTasksPerChallenge {
+	if count >= domain.MaxTasksPerChallenge {
 		return h.sendError(c, "📋 Maxed out at 50 tasks!")
 	}
 
